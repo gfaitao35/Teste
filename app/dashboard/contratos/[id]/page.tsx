@@ -5,17 +5,18 @@ import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Calendar, DollarSign, FileText, CheckCircle, Clock, XCircle, RefreshCw, Plus } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { ArrowLeft, Calendar, DollarSign, FileText, CheckCircle, Clock, XCircle, AlertTriangle, RefreshCw, Plus, Pencil, Trash2, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { BaixaParcelaDialog } from '@/components/financeiro/baixa-parcela-dialog'
 import { toast } from 'sonner'
@@ -55,16 +56,23 @@ export default function ContratoDetalhesPage() {
   const [parcelas, setParcelas] = useState<Parcela[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [showAddParcela, setShowAddParcela] = useState(false)
-  const [newParcela, setNewParcela] = useState({
-    numero_parcela: '',
-    valor_parcela: '',
-    data_vencimento: ''
-  })
 
-  useEffect(() => {
-    fetchContrato()
-  }, [params.id, refreshKey])
+  // Dialogs
+  const [showAddParcela, setShowAddParcela] = useState(false)
+  const [showEditContrato, setShowEditContrato] = useState(false)
+  const [showDeleteContrato, setShowDeleteContrato] = useState(false)
+  const [showDeleteParcela, setShowDeleteParcela] = useState<string | null>(null)
+  const [showEditParcela, setShowEditParcela] = useState<Parcela | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const [newParcela, setNewParcela] = useState({ numero_parcela: '', valor_parcela: '', data_vencimento: '' })
+  const [editForm, setEditForm] = useState({
+    valor_total: '', numero_parcelas: '', valor_parcela: '', dia_vencimento: '',
+    data_inicio: '', data_fim: '', status: '', observacoes: ''
+  })
+  const [editParcelaForm, setEditParcelaForm] = useState({ valor_parcela: '', data_vencimento: '' })
+
+  useEffect(() => { fetchContrato() }, [params.id, refreshKey])
 
   const fetchContrato = async () => {
     try {
@@ -77,357 +85,479 @@ export default function ContratoDetalhesPage() {
       } else {
         router.push('/dashboard/contratos')
       }
-    } catch (error) {
-      console.error('Erro ao buscar contrato:', error)
+    } catch {
       router.push('/dashboard/contratos')
     } finally {
       setLoading(false)
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-      ativo: { label: 'Ativo', className: 'bg-emerald-100 text-emerald-800', icon: <CheckCircle className="h-3 w-3" /> },
-      suspenso: { label: 'Suspenso', className: 'bg-amber-100 text-amber-800', icon: <Clock className="h-3 w-3" /> },
-      cancelado: { label: 'Cancelado', className: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3" /> },
-      concluido: { label: 'Concluído', className: 'bg-blue-100 text-blue-800', icon: <CheckCircle className="h-3 w-3" /> },
-      paga: { label: 'Paga', className: 'bg-emerald-100 text-emerald-800', icon: <CheckCircle className="h-3 w-3" /> },
-      pendente: { label: 'Pendente', className: 'bg-amber-100 text-amber-800', icon: <Clock className="h-3 w-3" /> },
-      atrasada: { label: 'Atrasada', className: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3" /> },
+  const openEditContrato = () => {
+    if (!contrato) return
+    setEditForm({
+      valor_total: String(contrato.valor_total),
+      numero_parcelas: String(contrato.numero_parcelas),
+      valor_parcela: String(contrato.valor_parcela),
+      dia_vencimento: String(contrato.dia_vencimento),
+      data_inicio: contrato.data_inicio,
+      data_fim: contrato.data_fim,
+      status: contrato.status,
+      observacoes: contrato.observacoes || ''
+    })
+    setShowEditContrato(true)
+  }
+
+  const handleEditContrato = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/contratos/${params.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          valor_total: parseFloat(editForm.valor_total),
+          numero_parcelas: parseInt(editForm.numero_parcelas),
+          valor_parcela: parseFloat(editForm.valor_parcela),
+          dia_vencimento: parseInt(editForm.dia_vencimento),
+          data_inicio: editForm.data_inicio,
+          data_fim: editForm.data_fim,
+          status: editForm.status,
+          observacoes: editForm.observacoes,
+        }),
+      })
+      if (res.ok) {
+        toast.success('Contrato atualizado com sucesso!')
+        setShowEditContrato(false)
+        setRefreshKey(p => p + 1)
+      } else {
+        toast.error('Erro ao atualizar contrato')
+      }
+    } catch {
+      toast.error('Erro ao atualizar contrato')
+    } finally {
+      setSaving(false)
     }
-    return statusConfig[status] || { label: status, className: 'bg-gray-100 text-gray-800', icon: null }
+  }
+
+  const handleDeleteContrato = async () => {
+    try {
+      const res = await fetch(`/api/contratos/${params.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success('Contrato excluido com sucesso!')
+        router.push('/dashboard/contratos')
+      } else {
+        toast.error('Erro ao excluir contrato')
+      }
+    } catch {
+      toast.error('Erro ao excluir contrato')
+    }
+  }
+
+  const handleChangeStatus = async (newStatus: string) => {
+    try {
+      const res = await fetch(`/api/contratos/${params.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (res.ok) {
+        toast.success(`Status alterado para ${getStatusBadge(newStatus).label}`)
+        setRefreshKey(p => p + 1)
+      }
+    } catch {
+      toast.error('Erro ao alterar status')
+    }
   }
 
   const handleAddParcela = async (e: React.FormEvent) => {
     e.preventDefault()
-    
     try {
       const response = await fetch('/api/parcelas', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...newParcela,
           contrato_id: params.id,
           numero_parcela: parseInt(newParcela.numero_parcela),
           valor_parcela: parseFloat(newParcela.valor_parcela),
+          data_vencimento: newParcela.data_vencimento,
         }),
       })
-
       if (response.ok) {
-        toast.success('Parcela adicionada com sucesso!')
+        toast.success('Parcela adicionada!')
         setShowAddParcela(false)
         setNewParcela({ numero_parcela: '', valor_parcela: '', data_vencimento: '' })
-        setRefreshKey(prev => prev + 1)
+        setRefreshKey(p => p + 1)
       } else {
         const error = await response.json()
         toast.error(error.error || 'Erro ao adicionar parcela')
       }
-    } catch (error) {
-      toast.error('Erro ao adicionar parcela')
+    } catch { toast.error('Erro ao adicionar parcela') }
+  }
+
+  const handleDeleteParcela = async (parcelaId: string) => {
+    try {
+      const res = await fetch(`/api/parcelas/${parcelaId}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast.success('Parcela excluida!')
+        setShowDeleteParcela(null)
+        setRefreshKey(p => p + 1)
+      } else {
+        toast.error('Erro ao excluir parcela')
+      }
+    } catch { toast.error('Erro ao excluir parcela') }
+  }
+
+  const handleEditParcela = async () => {
+    if (!showEditParcela) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/parcelas/${showEditParcela.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: showEditParcela.status,
+          data_pagamento: showEditParcela.data_pagamento,
+          valor_pago: parseFloat(editParcelaForm.valor_parcela) || showEditParcela.valor_parcela,
+          forma_pagamento: showEditParcela.forma_pagamento,
+        }),
+      })
+      if (res.ok) {
+        toast.success('Parcela atualizada!')
+        setShowEditParcela(null)
+        setRefreshKey(p => p + 1)
+      }
+    } catch { toast.error('Erro ao atualizar parcela') }
+    finally { setSaving(false) }
+  }
+
+  const handleRegenerarParcelas = async () => {
+    if (!contrato) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/contratos/${params.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          valor_total: contrato.valor_total,
+          numero_parcelas: contrato.numero_parcelas,
+          valor_parcela: contrato.valor_parcela,
+          regenerar_parcelas: true
+        }),
+      })
+      if (res.ok) {
+        toast.success('Parcelas regeneradas!')
+        setRefreshKey(p => p + 1)
+      }
+    } catch { toast.error('Erro ao regenerar parcelas') }
+    finally { setSaving(false) }
+  }
+
+  const getStatusBadge = (status: string) => {
+    const cfg: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+      ativo: { label: 'Ativo', className: 'bg-emerald-100 text-emerald-800', icon: <CheckCircle className="h-3 w-3" /> },
+      suspenso: { label: 'Suspenso', className: 'bg-amber-100 text-amber-800', icon: <Clock className="h-3 w-3" /> },
+      cancelado: { label: 'Cancelado', className: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3" /> },
+      concluido: { label: 'Concluido', className: 'bg-blue-100 text-blue-800', icon: <CheckCircle className="h-3 w-3" /> },
+      paga: { label: 'Paga', className: 'bg-emerald-100 text-emerald-800', icon: <CheckCircle className="h-3 w-3" /> },
+      pendente: { label: 'Pendente', className: 'bg-amber-100 text-amber-800', icon: <Clock className="h-3 w-3" /> },
+      atrasada: { label: 'Atrasada', className: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3" /> },
+      cancelada: { label: 'Cancelada', className: 'bg-muted text-muted-foreground', icon: <XCircle className="h-3 w-3" /> },
     }
+    return cfg[status] || { label: status, className: 'bg-muted text-muted-foreground', icon: null }
   }
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value)
+  const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+
+  const isVencida = (d: string) => new Date(d) < new Date()
+  const isProximaVencer = (d: string) => {
+    const diff = (new Date(d).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    return diff >= 0 && diff <= 7
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  if (!contrato) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Contrato não encontrado</p>
-      </div>
-    )
-  }
+  if (loading) return <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+  if (!contrato) return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Contrato nao encontrado</p></div>
 
   const parcelasPagas = parcelas.filter(p => p.status === 'paga').length
-  const valorRecebido = parcelas.reduce((sum, p) => sum + (p.valor_pago || 0), 0)
-  const valorPendente = parcelas.filter(p => p.status !== 'paga').reduce((sum, p) => sum + p.valor_parcela, 0)
+  const parcelasAtrasadas = parcelas.filter(p => (p.status === 'atrasada') || (p.status === 'pendente' && isVencida(p.data_vencimento))).length
+  const valorRecebido = parcelas.filter(p => p.status === 'paga').reduce((s, p) => s + (p.valor_pago || p.valor_parcela), 0)
+  const valorPendente = parcelas.filter(p => p.status !== 'paga' && p.status !== 'cancelada').reduce((s, p) => s + p.valor_parcela, 0)
+  const progressPercent = contrato.numero_parcelas > 0 ? Math.round((parcelasPagas / contrato.numero_parcelas) * 100) : 0
+  const proximaParcela = parcelas.find(p => p.status === 'pendente' || p.status === 'atrasada')
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/contratos">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Detalhes do Contrato</h1>
-          <p className="text-muted-foreground">Contrato {contrato.numero_contrato}</p>
+      {/* Header with actions */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard/contratos">
+            <Button variant="outline" size="sm"><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Contrato {contrato.numero_contrato}</h1>
+            <p className="text-muted-foreground">{contrato.razao_social}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={contrato.status} onValueChange={handleChangeStatus}>
+            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ativo">Ativo</SelectItem>
+              <SelectItem value="suspenso">Suspenso</SelectItem>
+              <SelectItem value="cancelado">Cancelado</SelectItem>
+              <SelectItem value="concluido">Concluido</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={openEditContrato}><Pencil className="mr-2 h-4 w-4" />Editar</Button>
+          <Button variant="destructive" size="sm" onClick={() => setShowDeleteContrato(true)}><Trash2 className="mr-2 h-4 w-4" />Excluir</Button>
         </div>
       </div>
 
-      {/* Informações do Contrato */}
+      {/* Contract Info Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Informações do Contrato
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />Informacoes do Contrato</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Número do Contrato</p>
-                <p className="text-lg font-semibold">{contrato.numero_contrato}</p>
-              </div>
-              <div>
                 <p className="text-sm font-medium text-muted-foreground">Cliente</p>
                 <p className="text-lg font-semibold">{contrato.razao_social}</p>
-                {contrato.nome_fantasia && (
-                  <p className="text-sm text-muted-foreground">{contrato.nome_fantasia}</p>
-                )}
+                {contrato.nome_fantasia && <p className="text-sm text-muted-foreground">{contrato.nome_fantasia}</p>}
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Status</p>
                 <div className="flex items-center gap-2 mt-1">
-                  {getStatusBadge(contrato.status).icon}
                   <Badge className={getStatusBadge(contrato.status).className}>
                     {getStatusBadge(contrato.status).label}
                   </Badge>
                 </div>
               </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Periodo</p>
+                <p className="font-medium">{new Date(contrato.data_inicio).toLocaleDateString('pt-BR')} ate {new Date(contrato.data_fim).toLocaleDateString('pt-BR')}</p>
+              </div>
             </div>
-
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Período do Contrato</p>
-                <p className="text-lg font-semibold">
-                  {new Date(contrato.data_inicio).toLocaleDateString('pt-BR')} até {new Date(contrato.data_fim).toLocaleDateString('pt-BR')}
-                </p>
-              </div>
-              <div>
                 <p className="text-sm font-medium text-muted-foreground">Valor Total</p>
-                <p className="text-lg font-semibold">{formatCurrency(contrato.valor_total)}</p>
+                <p className="text-2xl font-bold">{formatCurrency(contrato.valor_total)}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Condições</p>
-                <p className="text-lg font-semibold">
-                  {contrato.numero_parcelas}x de {formatCurrency(contrato.valor_parcela)}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Condicoes</p>
+                <p className="font-medium">{contrato.numero_parcelas}x de {formatCurrency(contrato.valor_parcela)}</p>
                 <p className="text-sm text-muted-foreground">Vencimento dia {contrato.dia_vencimento}</p>
               </div>
             </div>
           </div>
-
           {contrato.observacoes && (
-            <div className="mt-6">
-              <p className="text-sm font-medium text-muted-foreground">Observações</p>
-              <p className="mt-1 text-sm">{contrato.observacoes}</p>
+            <div className="mt-4 p-3 rounded-lg bg-muted">
+              <p className="text-sm font-medium text-muted-foreground">Observacoes</p>
+              <p className="text-sm mt-1">{contrato.observacoes}</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Resumo Financeiro */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Financial summary cards */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Parcelas Pagas
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{parcelasPagas}/{contrato.numero_parcelas}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(valorRecebido)} recebido
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Valor Pendente
-            </CardTitle>
-            <Clock className="h-4 w-4 text-amber-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{formatCurrency(valorPendente)}</div>
-            <p className="text-xs text-muted-foreground">
-              {contrato.numero_parcelas - parcelasPagas} parcelas restantes
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Progresso
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Progresso</CardTitle>
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
-              {Math.round((parcelasPagas / contrato.numero_parcelas) * 100)}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              do contrato concluído
-            </p>
+            <div className="text-2xl font-bold">{progressPercent}%</div>
+            <Progress value={progressPercent} className="mt-2 h-2" />
+            <p className="text-xs text-muted-foreground mt-1">{parcelasPagas}/{contrato.numero_parcelas} pagas</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Recebido</CardTitle>
+            <CheckCircle className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">{formatCurrency(valorRecebido)}</div>
+            <p className="text-xs text-muted-foreground">{parcelasPagas} parcelas pagas</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pendente</CardTitle>
+            <Clock className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">{formatCurrency(valorPendente)}</div>
+            <p className="text-xs text-muted-foreground">{contrato.numero_parcelas - parcelasPagas} restantes</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Atrasadas</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${parcelasAtrasadas > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>{parcelasAtrasadas}</div>
+            {proximaParcela && (
+              <p className="text-xs text-muted-foreground">Proxima: {new Date(proximaParcela.data_vencimento).toLocaleDateString('pt-BR')}</p>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Dialog de adicionar parcela */}
-      <Dialog open={showAddParcela} onOpenChange={() => setShowAddParcela(false)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Adicionar Nova Parcela</DialogTitle>
-            <DialogDescription>
-              Adicione uma nova parcela ao contrato {contrato.numero_contrato}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleAddParcela} className="space-y-4">
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="numero_parcela" className="text-right">
-                  Número da Parcela
-                </Label>
-                <Input
-                  id="numero_parcela"
-                  type="number"
-                  min="1"
-                  value={newParcela.numero_parcela}
-                  onChange={(e) => setNewParcela(prev => ({...prev, numero_parcela: e.target.value}))}
-                  className="col-span-3"
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="valor_parcela" className="text-right">
-                  Valor da Parcela
-                </Label>
-                <Input
-                  id="valor_parcela"
-                  type="number"
-                  step="0.01"
-                  value={newParcela.valor_parcela}
-                  onChange={(e) => setNewParcela(prev => ({...prev, valor_parcela: e.target.value}))}
-                  className="col-span-3"
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="data_vencimento" className="text-right">
-                  Data Vencimento
-                </Label>
-                <Input
-                  id="data_vencimento"
-                  type="date"
-                  value={newParcela.data_vencimento}
-                  onChange={(e) => setNewParcela(prev => ({...prev, data_vencimento: e.target.value}))}
-                  className="col-span-3"
-                  required
-                />
-              </div>
-            </div>
-          </form>
-          
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowAddParcela(false)}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              onClick={handleAddParcela}
-            >
-              Adicionar Parcela
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Lista de Parcelas */}
+      {/* Parcelas List */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Parcelas do Contrato
-          </CardTitle>
-          <CardDescription>Gerencie as parcelas do contrato</CardDescription>
-          <Button 
-            size="sm" 
-            onClick={() => setShowAddParcela(true)}
-            className="ml-auto"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar Parcela
-          </Button>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" />Parcelas</CardTitle>
+              <CardDescription>Gerencie as parcelas do contrato</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleRegenerarParcelas} disabled={saving}>
+                <RotateCcw className="mr-2 h-4 w-4" />Regenerar
+              </Button>
+              <Button size="sm" onClick={() => { setNewParcela({ numero_parcela: String(parcelas.length + 1), valor_parcela: String(contrato.valor_parcela), data_vencimento: '' }); setShowAddParcela(true) }}>
+                <Plus className="mr-2 h-4 w-4" />Adicionar
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {parcelas.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {parcelas.map((parcela) => {
-                const statusBadge = getStatusBadge(parcela.status)
+                const sb = getStatusBadge(parcela.status)
+                const atrasada = parcela.status === 'pendente' && isVencida(parcela.data_vencimento)
+                const proxima = parcela.status === 'pendente' && isProximaVencer(parcela.data_vencimento)
+                let borderColor = 'border-border'
+                if (parcela.status === 'paga') borderColor = 'border-emerald-300 bg-emerald-50/50'
+                else if (atrasada || parcela.status === 'atrasada') borderColor = 'border-red-300 bg-red-50/50'
+                else if (proxima) borderColor = 'border-amber-300 bg-amber-50/50'
+
                 return (
-                  <div key={parcela.id} className="flex items-center justify-between rounded-lg border p-4">
+                  <div key={parcela.id} className={`flex items-center justify-between rounded-lg border p-4 ${borderColor}`}>
                     <div className="space-y-1">
-                      <p className="font-medium">Parcela {parcela.numero_parcela}/{contrato.numero_parcelas}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Vencimento: {new Date(parcela.data_vencimento).toLocaleDateString('pt-BR')}
-                      </p>
-                      {parcela.data_pagamento && (
-                        <p className="text-sm text-muted-foreground">
-                          Pagamento: {new Date(parcela.data_pagamento).toLocaleDateString('pt-BR')}
-                        </p>
-                      )}
-                      {parcela.forma_pagamento && (
-                        <p className="text-sm text-muted-foreground">
-                          Forma: {parcela.forma_pagamento}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">Parcela {parcela.numero_parcela}/{contrato.numero_parcelas}</p>
+                        {atrasada && <Badge variant="destructive" className="text-xs">Vencida</Badge>}
+                        {proxima && <Badge className="bg-amber-100 text-amber-800 text-xs">Vence em breve</Badge>}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Vencimento: {new Date(parcela.data_vencimento).toLocaleDateString('pt-BR')}</p>
+                      {parcela.data_pagamento && <p className="text-sm text-muted-foreground">Pago em: {new Date(parcela.data_pagamento).toLocaleDateString('pt-BR')} {parcela.forma_pagamento ? `(${parcela.forma_pagamento})` : ''}</p>}
                     </div>
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <p className="font-medium">{formatCurrency(parcela.valor_parcela)}</p>
-                        {parcela.valor_pago && parcela.valor_pago !== parcela.valor_parcela && (
-                          <p className="text-sm text-muted-foreground">
-                            Pago: {formatCurrency(parcela.valor_pago)}
-                          </p>
+                        <p className="font-semibold">{formatCurrency(parcela.valor_parcela)}</p>
+                        {parcela.valor_pago != null && parcela.valor_pago !== parcela.valor_parcela && (
+                          <p className="text-xs text-muted-foreground">Pago: {formatCurrency(parcela.valor_pago)}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {statusBadge.icon}
-                        <Badge className={statusBadge.className}>
-                          {statusBadge.label}
-                        </Badge>
+                      <Badge className={sb.className}>{sb.label}</Badge>
+                      <div className="flex gap-1">
+                        {parcela.status !== 'paga' && parcela.status !== 'cancelada' && (
+                          <BaixaParcelaDialog parcela={parcela} onUpdate={() => setRefreshKey(p => p + 1)} />
+                        )}
+                        {parcela.status !== 'paga' && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowDeleteParcela(parcela.id)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        )}
                       </div>
-                      <BaixaParcelaDialog 
-                        parcela={parcela} 
-                        onUpdate={() => setRefreshKey(prev => prev + 1)}
-                      />
                     </div>
                   </div>
                 )
               })}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-4">Nenhuma parcela encontrada</p>
+            <p className="text-center text-muted-foreground py-8">Nenhuma parcela encontrada</p>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Contrato Dialog */}
+      <Dialog open={showEditContrato} onOpenChange={setShowEditContrato}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Contrato</DialogTitle>
+            <DialogDescription>Altere os dados do contrato {contrato.numero_contrato}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label className="text-xs">Valor Total</Label><Input type="number" step="0.01" value={editForm.valor_total} onChange={e => { const v = e.target.value; setEditForm(p => ({ ...p, valor_total: v, valor_parcela: p.numero_parcelas ? String((parseFloat(v) / parseInt(p.numero_parcelas)).toFixed(2)) : p.valor_parcela })) }} /></div>
+              <div><Label className="text-xs">Num. Parcelas</Label><Input type="number" value={editForm.numero_parcelas} onChange={e => { const n = e.target.value; setEditForm(p => ({ ...p, numero_parcelas: n, valor_parcela: p.valor_total ? String((parseFloat(p.valor_total) / parseInt(n || '1')).toFixed(2)) : p.valor_parcela })) }} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label className="text-xs">Valor Parcela</Label><Input type="number" step="0.01" value={editForm.valor_parcela} onChange={e => setEditForm(p => ({ ...p, valor_parcela: e.target.value }))} /></div>
+              <div><Label className="text-xs">Dia Vencimento</Label><Input type="number" min="1" max="31" value={editForm.dia_vencimento} onChange={e => setEditForm(p => ({ ...p, dia_vencimento: e.target.value }))} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label className="text-xs">Data Inicio</Label><Input type="date" value={editForm.data_inicio} onChange={e => setEditForm(p => ({ ...p, data_inicio: e.target.value }))} /></div>
+              <div><Label className="text-xs">Data Fim</Label><Input type="date" value={editForm.data_fim} onChange={e => setEditForm(p => ({ ...p, data_fim: e.target.value }))} /></div>
+            </div>
+            <div><Label className="text-xs">Status</Label>
+              <Select value={editForm.status} onValueChange={v => setEditForm(p => ({ ...p, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ativo">Ativo</SelectItem>
+                  <SelectItem value="suspenso">Suspenso</SelectItem>
+                  <SelectItem value="cancelado">Cancelado</SelectItem>
+                  <SelectItem value="concluido">Concluido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label className="text-xs">Observacoes</Label><Textarea value={editForm.observacoes} onChange={e => setEditForm(p => ({ ...p, observacoes: e.target.value }))} rows={3} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditContrato(false)}>Cancelar</Button>
+            <Button onClick={handleEditContrato} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Parcela Dialog */}
+      <Dialog open={showAddParcela} onOpenChange={setShowAddParcela}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Nova Parcela</DialogTitle></DialogHeader>
+          <form onSubmit={handleAddParcela} className="space-y-4">
+            <div><Label>Numero</Label><Input type="number" min="1" value={newParcela.numero_parcela} onChange={e => setNewParcela(p => ({ ...p, numero_parcela: e.target.value }))} required /></div>
+            <div><Label>Valor</Label><Input type="number" step="0.01" value={newParcela.valor_parcela} onChange={e => setNewParcela(p => ({ ...p, valor_parcela: e.target.value }))} required /></div>
+            <div><Label>Vencimento</Label><Input type="date" value={newParcela.data_vencimento} onChange={e => setNewParcela(p => ({ ...p, data_vencimento: e.target.value }))} required /></div>
+            <DialogFooter>
+              <Button variant="outline" type="button" onClick={() => setShowAddParcela(false)}>Cancelar</Button>
+              <Button type="submit">Adicionar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Contrato Confirmation */}
+      <AlertDialog open={showDeleteContrato} onOpenChange={setShowDeleteContrato}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Contrato?</AlertDialogTitle>
+            <AlertDialogDescription>Esta acao ira excluir o contrato {contrato.numero_contrato} e todas as suas parcelas. Esta acao nao pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteContrato} className="bg-red-600 hover:bg-red-700 text-white">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Parcela Confirmation */}
+      <AlertDialog open={!!showDeleteParcela} onOpenChange={() => setShowDeleteParcela(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Parcela?</AlertDialogTitle>
+            <AlertDialogDescription>Esta acao ira excluir a parcela permanentemente.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => showDeleteParcela && handleDeleteParcela(showDeleteParcela)} className="bg-red-600 hover:bg-red-700 text-white">Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

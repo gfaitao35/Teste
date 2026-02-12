@@ -116,3 +116,52 @@ export interface Parcela {
   updated_at: string
   contrato?: Contrato
 }
+
+export interface DocumentTemplate {
+  id: string
+  user_id: string
+  tipo: 'os' | 'certificado'
+  nome_empresa: string | null
+  subtitulo_empresa: string | null
+  logo_url: string | null
+  cor_primaria: string
+  cor_secundaria: string
+  cor_texto: string
+  fonte_familia: string
+  fonte_tamanho: number
+  mostrar_borda: boolean
+  estilo_borda: 'solid' | 'double' | 'dashed' | 'none'
+  texto_rodape: string | null
+  texto_assinatura: string | null
+  nome_assinatura: string | null
+  cargo_assinatura: string | null
+  campos_visiveis: string
+  updated_at: string
+}
+
+export interface CategoriaFinanceira {
+  id: string
+  user_id: string
+  nome: string
+  tipo: 'receita' | 'despesa'
+  cor: string
+  created_at: string
+}
+
+export interface LancamentoFinanceiro {
+  id: string
+  user_id: string
+  tipo: 'receita' | 'despesa'
+  categoria_id: string | null
+  descricao: string
+  valor: number
+  data_lancamento: string
+  data_pagamento: string | null
+  status: 'pendente' | 'pago' | 'cancelado'
+  forma_pagamento: string | null
+  referencia_tipo: 'os' | 'contrato' | 'manual' | null
+  referencia_id: string | null
+  created_at: string
+  updated_at: string
+  categoria?: CategoriaFinanceira
+}

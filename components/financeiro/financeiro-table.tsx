@@ -115,8 +115,8 @@ export function FinanceiroTable({ ordens }: FinanceiroTableProps) {
     router.refresh()
   }
 
-  const handlePrintOS = (ordem: OrdemServico) => {
-    generateOrderPDF(ordem)
+  const handlePrintOS = async (ordem: OrdemServico) => {
+    await generateOrderPDF(ordem)
     toast.success('Impressão da OS aberta')
   }
 

@@ -131,6 +131,70 @@ function initSchema(database: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_parcelas_status ON parcelas(status);
   `)
   migrateOrdensServicoFinanceiro(database)
+  migrateDocumentTemplates(database)
+  migrateLancamentosFinanceiros(database)
+}
+
+function migrateDocumentTemplates(database: Database.Database) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS document_templates (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      tipo TEXT NOT NULL CHECK (tipo IN ('os', 'certificado')),
+      nome_empresa TEXT,
+      subtitulo_empresa TEXT,
+      logo_url TEXT,
+      cor_primaria TEXT DEFAULT '#1e40af',
+      cor_secundaria TEXT DEFAULT '#3b82f6',
+      cor_texto TEXT DEFAULT '#1f2937',
+      fonte_familia TEXT DEFAULT 'Arial',
+      fonte_tamanho INTEGER DEFAULT 12,
+      mostrar_borda INTEGER DEFAULT 1,
+      estilo_borda TEXT DEFAULT 'solid',
+      texto_rodape TEXT,
+      texto_assinatura TEXT,
+      nome_assinatura TEXT,
+      cargo_assinatura TEXT,
+      campos_visiveis TEXT DEFAULT '{}',
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_templates_user_tipo ON document_templates(user_id, tipo);
+  `)
+}
+
+function migrateLancamentosFinanceiros(database: Database.Database) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS categorias_financeiras (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      nome TEXT NOT NULL,
+      tipo TEXT NOT NULL CHECK (tipo IN ('receita', 'despesa')),
+      cor TEXT DEFAULT '#6b7280',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_categorias_user_id ON categorias_financeiras(user_id);
+
+    CREATE TABLE IF NOT EXISTS lancamentos_financeiros (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      tipo TEXT NOT NULL CHECK (tipo IN ('receita', 'despesa')),
+      categoria_id TEXT REFERENCES categorias_financeiras(id) ON DELETE SET NULL,
+      descricao TEXT NOT NULL,
+      valor REAL NOT NULL,
+      data_lancamento TEXT NOT NULL,
+      data_pagamento TEXT,
+      status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'pago', 'cancelado')),
+      forma_pagamento TEXT,
+      referencia_tipo TEXT CHECK (referencia_tipo IN ('os', 'contrato', 'manual')),
+      referencia_id TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_lancamentos_user_id ON lancamentos_financeiros(user_id);
+    CREATE INDEX IF NOT EXISTS idx_lancamentos_tipo ON lancamentos_financeiros(tipo);
+    CREATE INDEX IF NOT EXISTS idx_lancamentos_status ON lancamentos_financeiros(status);
+    CREATE INDEX IF NOT EXISTS idx_lancamentos_data ON lancamentos_financeiros(data_lancamento);
+  `)
 }
 
 function migrateOrdensServicoFinanceiro(database: Database.Database) {

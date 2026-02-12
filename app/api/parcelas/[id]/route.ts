@@ -79,3 +79,35 @@ export async function PUT(
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const userId = await getSessionUserId()
+    if (!userId) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    const { id } = await params
+    const database = getDb()
+
+    const parcela = database.prepare(`
+      SELECT p.id, c.user_id FROM parcelas p
+      LEFT JOIN contratos c ON p.contrato_id = c.id
+      WHERE p.id = ? AND c.user_id = ?
+    `).get(id, userId) as any
+
+    if (!parcela) {
+      return NextResponse.json({ error: 'Parcela não encontrada' }, { status: 404 })
+    }
+
+    database.prepare('DELETE FROM parcelas WHERE id = ?').run(id)
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Erro ao excluir parcela:', error)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+  }
+}

@@ -64,8 +64,8 @@ export function CertificadosTable({ certificados }: CertificadosTableProps) {
     router.refresh()
   }
 
-  const handleDownloadPDF = (certificado: Certificado) => {
-    generateCertificatePDF(certificado)
+  const handleDownloadPDF = async (certificado: Certificado) => {
+    await generateCertificatePDF(certificado)
     toast.success('PDF gerado com sucesso')
   }
 
