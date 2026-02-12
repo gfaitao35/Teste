@@ -31,6 +31,8 @@ import {
   ChevronUp,
   User,
   DollarSign,
+  FileText,
+  BarChart3,
 } from 'lucide-react'
 import type { Profile } from '@/lib/types'
 
@@ -60,9 +62,19 @@ const menuItems = [
     icon: Award,
   },
   {
+    title: 'Contratos',
+    url: '/dashboard/contratos',
+    icon: FileText,
+  },
+  {
     title: 'Financeiro',
     url: '/dashboard/financeiro',
     icon: DollarSign,
+  },
+  {
+    title: 'Relatórios',
+    url: '/dashboard/relatorios/mensal',
+    icon: BarChart3,
   },
 ]
 

@@ -55,6 +55,9 @@ export interface OrdemServico {
   liquidado: boolean
   data_liquidacao: string | null
   valor_pago: number | null
+  garantia_meses: number | null
+  visitas_gratuitas: number
+  contrato_id: string | null
   created_at: string
   updated_at: string
   user_id: string
@@ -79,4 +82,37 @@ export interface DashboardStats {
   ordensAtivas: number
   ordensConcluidas: number
   certificadosEmitidos: number
+}
+
+export interface Contrato {
+  id: string
+  user_id: string
+  cliente_id: string
+  numero_contrato: string
+  data_inicio: string
+  data_fim: string
+  valor_total: number
+  numero_parcelas: number
+  valor_parcela: number
+  dia_vencimento: number
+  status: 'ativo' | 'suspenso' | 'cancelado' | 'concluido'
+  observacoes: string | null
+  created_at: string
+  updated_at: string
+  cliente?: Cliente
+}
+
+export interface Parcela {
+  id: string
+  contrato_id: string
+  numero_parcela: number
+  valor_parcela: number
+  data_vencimento: string
+  data_pagamento: string | null
+  valor_pago: number | null
+  status: 'pendente' | 'paga' | 'atrasada' | 'cancelada'
+  forma_pagamento: string | null
+  created_at: string
+  updated_at: string
+  contrato?: Contrato
 }

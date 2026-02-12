@@ -72,6 +72,9 @@ function initSchema(database: Database.Database) {
       liquidado INTEGER NOT NULL DEFAULT 0,
       data_liquidacao TEXT,
       valor_pago REAL,
+      garantia_meses INTEGER,
+      visitas_gratuitas INTEGER DEFAULT 0,
+      contrato_id TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
@@ -91,6 +94,41 @@ function initSchema(database: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_cert_user_id ON certificados(user_id);
     CREATE INDEX IF NOT EXISTS idx_cert_os_id ON certificados(ordem_servico_id);
+
+    CREATE TABLE IF NOT EXISTS contratos (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      cliente_id TEXT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+      numero_contrato TEXT NOT NULL UNIQUE,
+      data_inicio TEXT NOT NULL,
+      data_fim TEXT NOT NULL,
+      valor_total REAL NOT NULL,
+      numero_parcelas INTEGER NOT NULL,
+      valor_parcela REAL NOT NULL,
+      dia_vencimento INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo', 'suspenso', 'cancelado', 'concluido')),
+      observacoes TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_contratos_user_id ON contratos(user_id);
+    CREATE INDEX IF NOT EXISTS idx_contratos_cliente_id ON contratos(cliente_id);
+
+    CREATE TABLE IF NOT EXISTS parcelas (
+      id TEXT PRIMARY KEY,
+      contrato_id TEXT NOT NULL REFERENCES contratos(id) ON DELETE CASCADE,
+      numero_parcela INTEGER NOT NULL,
+      valor_parcela REAL NOT NULL,
+      data_vencimento TEXT NOT NULL,
+      data_pagamento TEXT,
+      valor_pago REAL,
+      status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'paga', 'atrasada', 'cancelada')),
+      forma_pagamento TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_parcelas_contrato_id ON parcelas(contrato_id);
+    CREATE INDEX IF NOT EXISTS idx_parcelas_status ON parcelas(status);
   `)
   migrateOrdensServicoFinanceiro(database)
 }
@@ -103,6 +141,15 @@ function migrateOrdensServicoFinanceiro(database: Database.Database) {
       ALTER TABLE ordens_servico ADD COLUMN liquidado INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE ordens_servico ADD COLUMN data_liquidacao TEXT;
       ALTER TABLE ordens_servico ADD COLUMN valor_pago REAL;
+    `)
+  }
+  
+  const hasGarantia = info.some((c) => c.name === 'garantia_meses')
+  if (!hasGarantia) {
+    database.exec(`
+      ALTER TABLE ordens_servico ADD COLUMN garantia_meses INTEGER;
+      ALTER TABLE ordens_servico ADD COLUMN visitas_gratuitas INTEGER DEFAULT 0;
+      ALTER TABLE ordens_servico ADD COLUMN contrato_id TEXT;
     `)
   }
 }

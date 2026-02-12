@@ -50,6 +50,8 @@ export function OrdemForm({ ordem, clientes, onSuccess }: OrdemFormProps) {
     tecnico_responsavel: ordem?.tecnico_responsavel || '',
     status: (ordem?.status || 'pendente') as StatusOrdemServico,
     valor: ordem?.valor?.toString() || '',
+    garantia_meses: ordem?.garantia_meses?.toString() || '',
+    visitas_gratuitas: ordem?.visitas_gratuitas?.toString() || '0',
     observacoes: ordem?.observacoes || '',
   })
 
@@ -84,6 +86,8 @@ export function OrdemForm({ ordem, clientes, onSuccess }: OrdemFormProps) {
       tecnico_responsavel: formData.tecnico_responsavel || null,
       status: formData.status,
       valor: formData.valor ? parseFloat(formData.valor) : null,
+      garantia_meses: formData.garantia_meses ? parseInt(formData.garantia_meses) : null,
+      visitas_gratuitas: formData.visitas_gratuitas ? parseInt(formData.visitas_gratuitas) : 0,
       observacoes: formData.observacoes || null,
     }
 
@@ -268,7 +272,7 @@ export function OrdemForm({ ordem, clientes, onSuccess }: OrdemFormProps) {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="valor">Valor (R$)</Label>
           <Input
@@ -279,6 +283,30 @@ export function OrdemForm({ ordem, clientes, onSuccess }: OrdemFormProps) {
             value={formData.valor}
             onChange={(e) => handleChange('valor', e.target.value)}
             placeholder="0,00"
+            disabled={loading}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="garantia_meses">Garantia (meses)</Label>
+          <Input
+            id="garantia_meses"
+            type="number"
+            min="0"
+            value={formData.garantia_meses}
+            onChange={(e) => handleChange('garantia_meses', e.target.value)}
+            placeholder="Ex: 6"
+            disabled={loading}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="visitas_gratuitas">Visitas Gratuitas</Label>
+          <Input
+            id="visitas_gratuitas"
+            type="number"
+            min="0"
+            value={formData.visitas_gratuitas}
+            onChange={(e) => handleChange('visitas_gratuitas', e.target.value)}
+            placeholder="Ex: 2"
             disabled={loading}
           />
         </div>

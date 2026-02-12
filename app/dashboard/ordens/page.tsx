@@ -43,7 +43,7 @@ function rowToClienteFull(row: Record<string, unknown>): Cliente {
   }
 }
 
-function rowToOrdem(row: Record<string, unknown>, cliente?: Cliente | Pick<Cliente, 'id' | 'razao_social' | 'nome_fantasia'>): OrdemServico {
+function rowToOrdem(row: Record<string, unknown>, cliente?: Cliente): OrdemServico {
   return {
     id: row.id as string,
     numero_os: row.numero_os as string,
@@ -63,6 +63,9 @@ function rowToOrdem(row: Record<string, unknown>, cliente?: Cliente | Pick<Clien
     liquidado: (row.liquidado as number) === 1,
     data_liquidacao: (row.data_liquidacao as string) || null,
     valor_pago: (row.valor_pago as number) ?? null,
+    garantia_meses: (row.garantia_meses as number) ?? null,
+    visitas_gratuitas: (row.visitas_gratuitas as number) ?? 0,
+    contrato_id: (row.contrato_id as string) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     user_id: row.user_id as string,

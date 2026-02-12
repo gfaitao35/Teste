@@ -19,6 +19,8 @@ export async function createOrdemAction(data: {
   tecnico_responsavel?: string | null
   status: StatusOrdemServico
   valor?: number | null
+  garantia_meses?: number | null
+  visitas_gratuitas?: number
   observacoes?: string | null
   numero_os: string
 }) {
@@ -30,8 +32,8 @@ export async function createOrdemAction(data: {
   try {
     database
       .prepare(
-        `INSERT INTO ordens_servico (id, user_id, cliente_id, numero_os, data_execucao, tipo_servico, descricao_servico, local_execucao, equipamentos_utilizados, produtos_aplicados, area_tratada, pragas_alvo, observacoes, tecnico_responsavel, status, valor)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO ordens_servico (id, user_id, cliente_id, numero_os, data_execucao, tipo_servico, descricao_servico, local_execucao, equipamentos_utilizados, produtos_aplicados, area_tratada, pragas_alvo, observacoes, tecnico_responsavel, status, valor, garantia_meses, visitas_gratuitas)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         id,
@@ -49,7 +51,9 @@ export async function createOrdemAction(data: {
         data.observacoes ?? null,
         data.tecnico_responsavel ?? null,
         data.status,
-        data.valor ?? null
+        data.valor ?? null,
+        data.garantia_meses ?? null,
+        data.visitas_gratuitas ?? 0
       )
   } catch {
     return { error: 'Erro ao criar ordem de serviço' }
@@ -74,6 +78,8 @@ export async function updateOrdemAction(
     tecnico_responsavel?: string | null
     status: StatusOrdemServico
     valor?: number | null
+    garantia_meses?: number | null
+    visitas_gratuitas?: number
     observacoes?: string | null
   }
 ) {
@@ -83,7 +89,7 @@ export async function updateOrdemAction(
   const database = getDb()
   const result = database
     .prepare(
-      `UPDATE ordens_servico SET cliente_id=?, data_execucao=?, tipo_servico=?, descricao_servico=?, local_execucao=?, equipamentos_utilizados=?, produtos_aplicados=?, area_tratada=?, pragas_alvo=?, observacoes=?, tecnico_responsavel=?, status=?, valor=?, updated_at=datetime('now')
+      `UPDATE ordens_servico SET cliente_id=?, data_execucao=?, tipo_servico=?, descricao_servico=?, local_execucao=?, equipamentos_utilizados=?, produtos_aplicados=?, area_tratada=?, pragas_alvo=?, observacoes=?, tecnico_responsavel=?, status=?, valor=?, garantia_meses=?, visitas_gratuitas=?, updated_at=datetime('now')
        WHERE id=? AND user_id=?`
     )
     .run(
@@ -100,6 +106,8 @@ export async function updateOrdemAction(
       data.tecnico_responsavel ?? null,
       data.status,
       data.valor ?? null,
+      data.garantia_meses ?? null,
+      data.visitas_gratuitas ?? 0,
       id,
       userId
     )

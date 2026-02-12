@@ -46,7 +46,7 @@ export function generateOrderPDF(ordem: OrdemServico) {
           margin: 0 auto;
         }
         .document {
-          border: 2px solid #1e40af;
+          border: 2px solid #ea580c;
           padding: 40px;
         }
         .header {
@@ -56,27 +56,27 @@ export function generateOrderPDF(ordem: OrdemServico) {
         .title {
           font-size: 24px;
           font-weight: bold;
-          color: #1e40af;
+          color: #ea580c;
           text-transform: uppercase;
           letter-spacing: 1px;
         }
-        .subtitle { font-size: 13px; color: #64748b; margin-top: 4px; }
+        .subtitle { font-size: 13px; color: #ea580c; margin-top: 4px; }
         .divider {
           height: 2px;
-          background: linear-gradient(to right, transparent, #1e40af, transparent);
+          background: linear-gradient(to right, transparent, #ea580c, transparent);
           margin: 20px 0;
         }
         .os-number {
           text-align: center;
           font-size: 18px;
           font-weight: bold;
-          color: #1e40af;
+          color: #ea580c;
           margin-bottom: 20px;
         }
         .section-title {
           font-size: 14px;
           font-weight: bold;
-          color: #1e40af;
+          color: #ea580c;
           margin: 16px 0 8px;
           padding-bottom: 4px;
           border-bottom: 1px solid #e2e8f0;
@@ -205,6 +205,22 @@ export function generateOrderPDF(ordem: OrdemServico) {
             <div class="value">${ordem.observacoes}</div>
           </div>
           ` : ''}
+        </div>
+
+        <div class="section-title">Condições de Garantia</div>
+        <div class="grid">
+          <div class="item">
+            <div class="label">Garantia</div>
+            <div class="value">
+              ${ordem.garantia_meses != null ? `${ordem.garantia_meses} mês(es)` : '-'}
+            </div>
+          </div>
+          <div class="item">
+            <div class="label">Visitas Gratuitas</div>
+            <div class="value">
+              ${typeof ordem.visitas_gratuitas === 'number' ? ordem.visitas_gratuitas : 0}
+            </div>
+          </div>
         </div>
 
         <div class="footer">
