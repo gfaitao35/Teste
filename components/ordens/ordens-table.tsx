@@ -39,11 +39,12 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { OrdemForm } from './ordem-form'
-import { MoreHorizontal, Pencil, Trash2, Search, ClipboardList, Award, FileDown, Eye, Edit, Download, Printer } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Search, ClipboardList, Award, FileDown, Eye, Edit, Download, Printer, Palette } from 'lucide-react'
 import { toast } from 'sonner'
 import { generateOrderPDF } from '@/lib/pdf-os'
 import { ActionMenu } from '@/components/ui/action-menu'
 import type { OrdemServico, Cliente, StatusOrdemServico } from '@/lib/types'
+import { formatDateBRFromYYYYMMDD } from '@/lib/utils'
 
 interface OrdensTableProps {
   ordens: OrdemServico[]
@@ -181,7 +182,7 @@ export function OrdensTable({ ordens, clientes }: OrdensTableProps) {
                       </TableCell>
                       <TableCell>{ordem.tipo_servico}</TableCell>
                       <TableCell>
-                        {new Date(ordem.data_execucao).toLocaleDateString('pt-BR')}
+                        {formatDateBRFromYYYYMMDD(ordem.data_execucao)}
                       </TableCell>
                       <TableCell>{formatCurrency(ordem.valor)}</TableCell>
                       <TableCell>
@@ -196,6 +197,11 @@ export function OrdensTable({ ordens, clientes }: OrdensTableProps) {
                               label: 'Visualizar',
                               icon: <Eye className="h-4 w-4" />,
                               onClick: () => router.push(`/dashboard/ordens/${ordem.id}`)
+                            },
+                            {
+                              label: 'Editar Visual',
+                              icon: <Palette className="h-4 w-4" />,
+                              onClick: () => router.push(`/dashboard/ordens/${ordem.id}?visual=1`)
                             },
                             {
                               label: 'Editar',

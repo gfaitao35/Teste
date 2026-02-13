@@ -1,6 +1,7 @@
 import type { OrdemServico } from './types'
 import type { Cliente } from './types'
 import type { DocumentTemplate } from './types'
+import { formatDateBRFromYYYYMMDD } from './utils'
 
 interface TemplateStyle {
   nome_empresa: string
@@ -68,9 +69,7 @@ export async function generateOrderPDF(ordem: OrdemServico) {
   const s = await fetchTemplate()
   const cliente = ordem.cliente as Partial<Cliente> | undefined
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
-  }
+  const formatDate = (dateString: string) => formatDateBRFromYYYYMMDD(dateString, { day: '2-digit', month: 'long', year: 'numeric' })
   const formatCNPJ = (cnpj: string) => {
     if (!cnpj) return '-'
     const n = cnpj.replace(/\D/g, '')

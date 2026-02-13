@@ -2,7 +2,8 @@ import { getDb } from '@/lib/db'
 import { getSessionUserId } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, ClipboardList, CheckCircle, Award } from 'lucide-react'
+import { Users, ClipboardList, CheckCircle, Award, FileText } from 'lucide-react'
+import { formatDateBRFromYYYYMMDD } from '@/lib/utils'
 
 export default async function DashboardPage() {
   const userId = await getSessionUserId()
@@ -11,6 +12,15 @@ export default async function DashboardPage() {
   const database = getDb()
 
   const totalClientes = (database.prepare('SELECT COUNT(*) as c FROM clientes WHERE user_id = ?').get(userId) as { c: number }).c
+  const contratosEmVigor = (
+  database.prepare(`
+    SELECT COUNT(*) as c 
+    FROM contratos 
+    WHERE user_id = ?
+    AND date('now') BETWEEN data_inicio AND data_fim
+  `).get(userId) as { c: number }
+).c
+
   const ordensAtivas = (database.prepare("SELECT COUNT(*) as c FROM ordens_servico WHERE user_id = ? AND status IN ('pendente', 'em_andamento')").get(userId) as { c: number }).c
   const ordensConcluidas = (database.prepare("SELECT COUNT(*) as c FROM ordens_servico WHERE user_id = ? AND status = 'concluida'").get(userId) as { c: number }).c
   const certificadosEmitidos = (database.prepare('SELECT COUNT(*) as c FROM certificados WHERE user_id = ?').get(userId) as { c: number }).c
@@ -34,6 +44,14 @@ export default async function DashboardPage() {
       icon: Users,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
+    },
+    {
+      title: 'Contratos em Vigor',
+      value: contratosEmVigor,
+      description: 'Contratos ativos atualmente',
+      icon: FileText,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-100',
     },
     {
       title: 'Ordens Ativas',
@@ -78,7 +96,7 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground">Visão geral do sistema</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -121,7 +139,7 @@ export default async function DashboardPage() {
                         {statusBadge.label}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(ordem.data_execucao as string).toLocaleDateString('pt-BR')}
+                        {formatDateBRFromYYYYMMDD(ordem.data_execucao as string)}
                       </span>
                     </div>
                   </div>

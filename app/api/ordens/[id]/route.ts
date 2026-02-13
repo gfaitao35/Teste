@@ -4,13 +4,19 @@ import { getSessionUserId } from '@/lib/session'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     const userId = await getSessionUserId()
+    console.log('[API Ordens] GET request, userId:', userId)
     if (!userId) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
+
+    // Handle both Promise and non-Promise params (Next.js version compatibility)
+    const resolvedParams = await Promise.resolve(params)
+    const orderId = resolvedParams.id
+    console.log('[API Ordens] Looking for order:', orderId)
 
     const database = getDb()
 
@@ -22,9 +28,10 @@ export async function GET(
       FROM ordens_servico o
       LEFT JOIN clientes c ON o.cliente_id = c.id
       WHERE o.id = ? AND o.user_id = ?
-    `).get(params.id, userId) as any
+    `).get(orderId, userId) as any
 
     if (!ordem) {
+      console.error('[API] Order not found:', { orderId, userId })
       return NextResponse.json({ error: 'Ordem de serviço não encontrada' }, { status: 404 })
     }
 

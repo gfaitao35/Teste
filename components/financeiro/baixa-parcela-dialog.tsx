@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { toLocalDateInput, formatDateBRFromYYYYMMDD } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -40,7 +41,7 @@ export function BaixaParcelaDialog({ parcela, onUpdate }: BaixaParcelaDialogProp
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     status: 'paga',
-    data_pagamento: new Date().toISOString().split('T')[0],
+    data_pagamento: toLocalDateInput(),
     valor_pago: parcela.valor_parcela.toString(),
     forma_pagamento: '',
   })
@@ -193,7 +194,7 @@ export function BaixaParcelaDialog({ parcela, onUpdate }: BaixaParcelaDialogProp
             <div className="text-sm">
               <p className="font-medium">Resumo da Parcela</p>
               <p className="text-muted-foreground">
-                Vencimento: {new Date(parcela.data_vencimento).toLocaleDateString('pt-BR')}
+                Vencimento: {formatDateBRFromYYYYMMDD(parcela.data_vencimento)}
               </p>
             </div>
             <div className="text-right">

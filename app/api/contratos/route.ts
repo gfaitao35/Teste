@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getSessionUserId } from '@/lib/session'
+import { toLocalDateInput } from '@/lib/utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
     const startDate = new Date(data_inicio)
     for (let i = 1; i <= numero_parcelas; i++) {
       const vencimentoDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, dia_vencimento)
-      const data_vencimento = vencimentoDate.toISOString().split('T')[0]
+      const data_vencimento = toLocalDateInput(vencimentoDate)
 
       database.prepare(`
         INSERT INTO parcelas (

@@ -20,6 +20,7 @@ import { ArrowLeft, Calendar, DollarSign, FileText, CheckCircle, Clock, XCircle,
 import Link from 'next/link'
 import { BaixaParcelaDialog } from '@/components/financeiro/baixa-parcela-dialog'
 import { toast } from 'sonner'
+import { formatDateBRFromYYYYMMDD, parseDateFromYYYYMMDD, startOfDay } from '@/lib/utils'
 
 interface Contrato {
   id: string
@@ -58,34 +59,41 @@ export default function ContratoDetalhesPage() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   // Dialogs
-  const [showAddParcela, setShowAddParcela] = useState(false)
   const [showEditContrato, setShowEditContrato] = useState(false)
   const [showDeleteContrato, setShowDeleteContrato] = useState(false)
   const [showDeleteParcela, setShowDeleteParcela] = useState<string | null>(null)
   const [showEditParcela, setShowEditParcela] = useState<Parcela | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const [newParcela, setNewParcela] = useState({ numero_parcela: '', valor_parcela: '', data_vencimento: '' })
   const [editForm, setEditForm] = useState({
     valor_total: '', numero_parcelas: '', valor_parcela: '', dia_vencimento: '',
     data_inicio: '', data_fim: '', status: '', observacoes: ''
   })
   const [editParcelaForm, setEditParcelaForm] = useState({ valor_parcela: '', data_vencimento: '' })
 
-  useEffect(() => { fetchContrato() }, [params.id, refreshKey])
+  useEffect(() => {
+    if (!params?.id) return
+    fetchContrato()
+  }, [params.id, refreshKey])
 
   const fetchContrato = async () => {
     try {
       setLoading(true)
+      console.log('fetchContrato - params.id:', params.id)
       const response = await fetch(`/api/contratos/${params.id}`)
+      console.log('fetchContrato - response.status:', response.status)
+      const text = await response.text()
+      console.log('fetchContrato - response.text:', text)
       if (response.ok) {
-        const data = await response.json()
+        const data = JSON.parse(text)
         setContrato(data.contrato)
         setParcelas(data.parcelas)
       } else {
+        console.log('fetchContrato - not ok, redirecting')
         router.push('/dashboard/contratos')
       }
     } catch {
+      console.error('fetchContrato - exception')
       router.push('/dashboard/contratos')
     } finally {
       setLoading(false)
@@ -168,31 +176,6 @@ export default function ContratoDetalhesPage() {
     }
   }
 
-  const handleAddParcela = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      const response = await fetch('/api/parcelas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contrato_id: params.id,
-          numero_parcela: parseInt(newParcela.numero_parcela),
-          valor_parcela: parseFloat(newParcela.valor_parcela),
-          data_vencimento: newParcela.data_vencimento,
-        }),
-      })
-      if (response.ok) {
-        toast.success('Parcela adicionada!')
-        setShowAddParcela(false)
-        setNewParcela({ numero_parcela: '', valor_parcela: '', data_vencimento: '' })
-        setRefreshKey(p => p + 1)
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Erro ao adicionar parcela')
-      }
-    } catch { toast.error('Erro ao adicionar parcela') }
-  }
-
   const handleDeleteParcela = async (parcelaId: string) => {
     try {
       const res = await fetch(`/api/parcelas/${parcelaId}`, { method: 'DELETE' })
@@ -229,28 +212,6 @@ export default function ContratoDetalhesPage() {
     finally { setSaving(false) }
   }
 
-  const handleRegenerarParcelas = async () => {
-    if (!contrato) return
-    setSaving(true)
-    try {
-      const res = await fetch(`/api/contratos/${params.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          valor_total: contrato.valor_total,
-          numero_parcelas: contrato.numero_parcelas,
-          valor_parcela: contrato.valor_parcela,
-          regenerar_parcelas: true
-        }),
-      })
-      if (res.ok) {
-        toast.success('Parcelas regeneradas!')
-        setRefreshKey(p => p + 1)
-      }
-    } catch { toast.error('Erro ao regenerar parcelas') }
-    finally { setSaving(false) }
-  }
-
   const getStatusBadge = (status: string) => {
     const cfg: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
       ativo: { label: 'Ativo', className: 'bg-emerald-100 text-emerald-800', icon: <CheckCircle className="h-3 w-3" /> },
@@ -267,9 +228,10 @@ export default function ContratoDetalhesPage() {
 
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
-  const isVencida = (d: string) => new Date(d) < new Date()
+  const isVencida = (d: string) => (parseDateFromYYYYMMDD(d) || new Date(0)) < startOfDay(new Date())
   const isProximaVencer = (d: string) => {
-    const diff = (new Date(d).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    const dt = parseDateFromYYYYMMDD(d) || new Date(0)
+    const diff = (dt.getTime() - startOfDay(new Date()).getTime()) / (1000 * 60 * 60 * 24)
     return diff >= 0 && diff <= 7
   }
 
@@ -334,7 +296,7 @@ export default function ContratoDetalhesPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Periodo</p>
-                <p className="font-medium">{new Date(contrato.data_inicio).toLocaleDateString('pt-BR')} ate {new Date(contrato.data_fim).toLocaleDateString('pt-BR')}</p>
+                <p className="font-medium">{formatDateBRFromYYYYMMDD(contrato.data_inicio)} ate {formatDateBRFromYYYYMMDD(contrato.data_fim)}</p>
               </div>
             </div>
             <div className="space-y-4">
@@ -399,7 +361,7 @@ export default function ContratoDetalhesPage() {
           <CardContent>
             <div className={`text-2xl font-bold ${parcelasAtrasadas > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>{parcelasAtrasadas}</div>
             {proximaParcela && (
-              <p className="text-xs text-muted-foreground">Proxima: {new Date(proximaParcela.data_vencimento).toLocaleDateString('pt-BR')}</p>
+              <p className="text-xs text-muted-foreground">Proxima: {formatDateBRFromYYYYMMDD(proximaParcela.data_vencimento)}</p>
             )}
           </CardContent>
         </Card>
@@ -412,14 +374,6 @@ export default function ContratoDetalhesPage() {
             <div>
               <CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" />Parcelas</CardTitle>
               <CardDescription>Gerencie as parcelas do contrato</CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleRegenerarParcelas} disabled={saving}>
-                <RotateCcw className="mr-2 h-4 w-4" />Regenerar
-              </Button>
-              <Button size="sm" onClick={() => { setNewParcela({ numero_parcela: String(parcelas.length + 1), valor_parcela: String(contrato.valor_parcela), data_vencimento: '' }); setShowAddParcela(true) }}>
-                <Plus className="mr-2 h-4 w-4" />Adicionar
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -443,8 +397,8 @@ export default function ContratoDetalhesPage() {
                         {atrasada && <Badge variant="destructive" className="text-xs">Vencida</Badge>}
                         {proxima && <Badge className="bg-amber-100 text-amber-800 text-xs">Vence em breve</Badge>}
                       </div>
-                      <p className="text-sm text-muted-foreground">Vencimento: {new Date(parcela.data_vencimento).toLocaleDateString('pt-BR')}</p>
-                      {parcela.data_pagamento && <p className="text-sm text-muted-foreground">Pago em: {new Date(parcela.data_pagamento).toLocaleDateString('pt-BR')} {parcela.forma_pagamento ? `(${parcela.forma_pagamento})` : ''}</p>}
+                      <p className="text-sm text-muted-foreground">Vencimento: {formatDateBRFromYYYYMMDD(parcela.data_vencimento)}</p>
+                      {parcela.data_pagamento && <p className="text-sm text-muted-foreground">Pago em: {formatDateBRFromYYYYMMDD(parcela.data_pagamento)} {parcela.forma_pagamento ? `(${parcela.forma_pagamento})` : ''}</p>}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
@@ -512,22 +466,6 @@ export default function ContratoDetalhesPage() {
             <Button variant="outline" onClick={() => setShowEditContrato(false)}>Cancelar</Button>
             <Button onClick={handleEditContrato} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Parcela Dialog */}
-      <Dialog open={showAddParcela} onOpenChange={setShowAddParcela}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Nova Parcela</DialogTitle></DialogHeader>
-          <form onSubmit={handleAddParcela} className="space-y-4">
-            <div><Label>Numero</Label><Input type="number" min="1" value={newParcela.numero_parcela} onChange={e => setNewParcela(p => ({ ...p, numero_parcela: e.target.value }))} required /></div>
-            <div><Label>Valor</Label><Input type="number" step="0.01" value={newParcela.valor_parcela} onChange={e => setNewParcela(p => ({ ...p, valor_parcela: e.target.value }))} required /></div>
-            <div><Label>Vencimento</Label><Input type="date" value={newParcela.data_vencimento} onChange={e => setNewParcela(p => ({ ...p, data_vencimento: e.target.value }))} required /></div>
-            <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setShowAddParcela(false)}>Cancelar</Button>
-              <Button type="submit">Adicionar</Button>
-            </DialogFooter>
-          </form>
         </DialogContent>
       </Dialog>
 

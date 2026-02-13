@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getSessionUserId } from '@/lib/session'
+import { toLocalDateInput } from '@/lib/utils'
 
 export async function PUT(
   request: NextRequest,
@@ -8,6 +9,9 @@ export async function PUT(
 ) {
   try {
     const userId = await getSessionUserId()
+    const { id } = await params as { id: string }
+    console.log('[API] PUT /api/parcelas/:id - id=', id, 'userId=', userId)
+    console.log('[API] request cookie header:', request.headers.get('cookie'))
     if (!userId) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
@@ -27,7 +31,7 @@ export async function PUT(
       FROM parcelas p
       LEFT JOIN contratos c ON p.contrato_id = c.id
       WHERE p.id = ? AND c.user_id = ?
-    `).get(params.id, userId) as any
+    `).get(id, userId) as any
 
     if (!parcela) {
       return NextResponse.json({ error: 'Parcela não encontrada' }, { status: 404 })
@@ -43,11 +47,34 @@ export async function PUT(
       data_pagamento || null,
       valor_pago || null,
       forma_pagamento || null,
-      params.id
+      id
     )
 
     if (result.changes === 0) {
       return NextResponse.json({ error: 'Erro ao atualizar parcela' }, { status: 500 })
+    }
+
+    // Criar lançamento de receita quando parcela for paga
+    if (status === 'paga') {
+      const lancId = crypto.randomUUID()
+      database.prepare(`
+        INSERT INTO lancamentos_financeiros (
+          id, user_id, tipo, descricao, valor, data_lancamento, data_pagamento, 
+          status, forma_pagamento, referencia_tipo, referencia_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        lancId, 
+        userId, 
+        'receita', 
+        `Parcela ${parcela.numero_parcela} - Contrato ${parcela.contrato_id}`,
+        valor_pago || parcela.valor_parcela,
+        data_pagamento || toLocalDateInput(),
+        data_pagamento || toLocalDateInput(),
+        'pago',
+        forma_pagamento || null,
+        'contrato',
+        parcela.contrato_id
+      )
     }
 
     // Verificar se todas as parcelas do contrato foram pagas

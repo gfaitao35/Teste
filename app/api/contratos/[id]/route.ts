@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getSessionUserId } from '@/lib/session'
+import { toLocalDateInput } from '@/lib/utils'
 
 export async function GET(
   request: NextRequest,
@@ -8,6 +9,9 @@ export async function GET(
 ) {
   try {
     const userId = await getSessionUserId()
+    const { id } = await params as { id: string }
+    console.log('[API] request cookie header:', request.headers.get('cookie'))
+    console.log('[API] GET /api/contratos/:id - params.id=', id, 'userId=', userId)
     if (!userId) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
@@ -19,10 +23,12 @@ export async function GET(
       SELECT c.*, cl.razao_social, cl.nome_fantasia
       FROM contratos c
       LEFT JOIN clientes cl ON c.cliente_id = cl.id
-      WHERE c.id = ? AND c.user_id = ?
-    `).get(params.id, userId) as any
+        WHERE c.id = ? AND c.user_id = ?
+      `).get(id, userId) as any
 
+    console.log('[API] contrato fetched:', !!contrato)
     if (!contrato) {
+        console.log('[API] contrato not found for id', id)
       return NextResponse.json({ error: 'Contrato não encontrado' }, { status: 404 })
     }
 
@@ -31,7 +37,7 @@ export async function GET(
       SELECT * FROM parcelas
       WHERE contrato_id = ?
       ORDER BY numero_parcela ASC
-    `).all(params.id) as any[]
+    `).all(id) as any[]
 
     return NextResponse.json({
       contrato,
@@ -89,29 +95,6 @@ export async function PUT(
       body.observacoes !== undefined ? body.observacoes : null,
       id, userId
     )
-
-    // If regenerar_parcelas flag is set, delete pending parcelas and recreate
-    if (body.regenerar_parcelas) {
-      database.prepare(
-        "DELETE FROM parcelas WHERE contrato_id = ? AND status = 'pendente'"
-      ).run(id)
-
-      const contrato = database.prepare('SELECT * FROM contratos WHERE id = ?').get(id) as any
-      const parcelasExistentes = database.prepare(
-        'SELECT MAX(numero_parcela) as max_num FROM parcelas WHERE contrato_id = ?'
-      ).get(id) as { max_num: number | null }
-
-      const startNum = (parcelasExistentes.max_num || 0) + 1
-      const startDate = new Date(contrato.data_inicio)
-
-      for (let i = startNum; i <= contrato.numero_parcelas; i++) {
-        const vencDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, contrato.dia_vencimento)
-        database.prepare(`
-          INSERT INTO parcelas (id, contrato_id, numero_parcela, valor_parcela, data_vencimento, status)
-          VALUES (?, ?, ?, ?, ?, 'pendente')
-        `).run(crypto.randomUUID(), id, i, contrato.valor_parcela, vencDate.toISOString().split('T')[0])
-      }
-    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

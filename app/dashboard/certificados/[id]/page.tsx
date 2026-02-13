@@ -9,6 +9,7 @@ import { ActionMenu } from '@/components/ui/action-menu'
 import { ArrowLeft, Edit, Eye, FileText, Download, Printer, Shield, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { formatDateBRFromYYYYMMDD, parseDateFromYYYYMMDD, startOfDay } from '@/lib/utils'
 
 interface Certificado {
   id: string
@@ -92,8 +93,8 @@ export default function CertificadoDetalhesPage() {
   }
 
   const getStatusBadge = (dataValidade: string) => {
-    const hoje = new Date()
-    const validade = new Date(dataValidade)
+    const hoje = startOfDay(new Date())
+    const validade = parseDateFromYYYYMMDD(dataValidade) || new Date(0)
     const diasRestantes = Math.ceil((validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24))
     
     if (diasRestantes < 0) {
@@ -188,14 +189,14 @@ export default function CertificadoDetalhesPage() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Data de Emissão</p>
                 <p className="font-semibold">
-                  {new Date(certificado.data_emissao).toLocaleDateString('pt-BR')}
+                  {formatDateBRFromYYYYMMDD(certificado.data_emissao)}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Data de Validade</p>
                 <div className="space-y-1">
                   <p className="font-semibold">
-                    {new Date(certificado.data_validade).toLocaleDateString('pt-BR')}
+                    {formatDateBRFromYYYYMMDD(certificado.data_validade)}
                   </p>
                   <Badge className={statusBadge.className}>
                     {statusBadge.label}
@@ -219,7 +220,7 @@ export default function CertificadoDetalhesPage() {
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Execução: {certificado.ordem_servico?.data_execucao && 
-                    new Date(certificado.ordem_servico.data_execucao).toLocaleDateString('pt-BR')
+                    formatDateBRFromYYYYMMDD(certificado.ordem_servico.data_execucao)
                   }
                 </p>
               </div>
@@ -253,7 +254,7 @@ export default function CertificadoDetalhesPage() {
                 <p className="text-sm font-medium text-muted-foreground">Válido por</p>
                 <p className="text-lg font-semibold text-primary">
                   {Math.ceil(
-                    (new Date(certificado.data_validade).getTime() - new Date().getTime()) / 
+                    ((parseDateFromYYYYMMDD(certificado.data_validade) || new Date(0)).getTime() - startOfDay(new Date()).getTime()) / 
                     (1000 * 60 * 60 * 24)
                   )} dias
                 </p>

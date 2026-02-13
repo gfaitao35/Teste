@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts'
 import type { OrdemServico } from '@/lib/types'
 import Link from 'next/link'
+import { toLocalDateInput, parseDateFromYYYYMMDD, formatDateBRFromYYYYMMDD, startOfDay } from '@/lib/utils'
 
 interface FinanceiroClientProps {
   ordens: OrdemServico[]
@@ -28,7 +29,7 @@ interface FinanceiroClientProps {
 }
 
 const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
-const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '-'
+const formatDate = (d: string | null) => formatDateBRFromYYYYMMDD(d)
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const CHART_COLORS = ['#22c55e', '#3b82f6', '#ef4444', '#f97316', '#8b5cf6', '#ec4899', '#14b8a6', '#6b7280']
@@ -39,26 +40,47 @@ export function FinanceiroClient({ ordens, contratos, parcelas }: FinanceiroClie
   const [lancamentos, setLancamentos] = useState<any[]>([])
   const [categorias, setCategorias] = useState<any[]>([])
   const [showNovoLancamento, setShowNovoLancamento] = useState(false)
-  const [novoLanc, setNovoLanc] = useState({ tipo: 'despesa', categoria_id: '', descricao: '', valor: '', data_lancamento: new Date().toISOString().split('T')[0], data_pagamento: '', status: 'pendente', forma_pagamento: '' })
+  const [novoLanc, setNovoLanc] = useState({ tipo: 'despesa', categoria_id: '', descricao: '', valor: '', data_lancamento: toLocalDateInput(), data_pagamento: '', status: 'pendente', forma_pagamento: '' })
   const [saving, setSaving] = useState(false)
   const [periodo, setPeriodo] = useState('mes_atual')
+  const today = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(String(today.getMonth() + 1).padStart(2, '0'))
+  const [selectedYear, setSelectedYear] = useState(String(today.getFullYear()))
 
   useEffect(() => {
     fetchResumo()
     fetchLancamentos()
     fetchCategorias()
-  }, [periodo])
+  }, [periodo, selectedMonth, selectedYear])
 
   const getPeriodoDates = () => {
     const now = new Date()
-    if (periodo === 'mes_atual') return { data_inicio: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, data_fim: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-31` }
+    if (periodo === 'mes_atual') {
+      const y = now.getFullYear()
+      const m = String(now.getMonth() + 1).padStart(2, '0')
+      const last = new Date(y, now.getMonth() + 1, 0).getDate()
+      return { data_inicio: `${y}-${m}-01`, data_fim: `${y}-${m}-${String(last).padStart(2, '0')}` }
+    }
     if (periodo === 'mes_anterior') {
       const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      return { data_inicio: `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-01`, data_fim: `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-31` }
+      const y = prev.getFullYear()
+      const m = String(prev.getMonth() + 1).padStart(2, '0')
+      const last = new Date(y, prev.getMonth() + 1, 0).getDate()
+      return { data_inicio: `${y}-${m}-01`, data_fim: `${y}-${m}-${String(last).padStart(2, '0')}` }
     }
     if (periodo === '3_meses') {
       const prev = new Date(now.getFullYear(), now.getMonth() - 2, 1)
-      return { data_inicio: `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-01`, data_fim: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-31` }
+      const y = prev.getFullYear()
+      const m = String(prev.getMonth() + 1).padStart(2, '0')
+      const lastNow = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+      return { data_inicio: `${y}-${m}-01`, data_fim: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastNow).padStart(2, '0')}` }
+    }
+    if (periodo === 'mes_especifico') {
+      const y = parseInt(selectedYear, 10)
+      const mIndex = parseInt(selectedMonth, 10) - 1
+      const last = new Date(y, mIndex + 1, 0).getDate()
+      const mm = String(mIndex + 1).padStart(2, '0')
+      return { data_inicio: `${y}-${mm}-01`, data_fim: `${y}-${mm}-${String(last).padStart(2, '0')}` }
     }
     return {}
   }
@@ -103,7 +125,7 @@ export function FinanceiroClient({ ordens, contratos, parcelas }: FinanceiroClie
       if (res.ok) {
         toast.success('Lancamento criado!')
         setShowNovoLancamento(false)
-        setNovoLanc({ tipo: 'despesa', categoria_id: '', descricao: '', valor: '', data_lancamento: new Date().toISOString().split('T')[0], data_pagamento: '', status: 'pendente', forma_pagamento: '' })
+        setNovoLanc({ tipo: 'despesa', categoria_id: '', descricao: '', valor: '', data_lancamento: toLocalDateInput(), data_pagamento: '', status: 'pendente', forma_pagamento: '' })
         fetchLancamentos()
         fetchResumo()
       } else toast.error('Erro ao criar lancamento')
@@ -122,7 +144,7 @@ export function FinanceiroClient({ ordens, contratos, parcelas }: FinanceiroClie
     try {
       const res = await fetch(`/api/lancamentos/${lanc.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'pago', data_pagamento: new Date().toISOString().split('T')[0] })
+        body: JSON.stringify({ status: 'pago', data_pagamento: toLocalDateInput() })
       })
       if (res.ok) { toast.success('Lancamento pago!'); fetchLancamentos(); fetchResumo() }
     } catch { toast.error('Erro ao pagar') }
@@ -133,8 +155,8 @@ export function FinanceiroClient({ ordens, contratos, parcelas }: FinanceiroClie
   const parcelasPendentes = parcelas.filter((p: any) => p.status === 'pendente' || p.status === 'atrasada')
   const contasReceber = [
     ...osPendentes.map(o => ({ id: o.id, tipo: 'OS', referencia: o.numero_os, cliente: (o.cliente as any)?.razao_social || '-', valor: o.valor || 0, vencimento: o.data_execucao, status: 'pendente' as string, source: 'os' as const })),
-    ...parcelasPendentes.map((p: any) => ({ id: p.id, tipo: 'Parcela', referencia: `${p.numero_contrato} - P${p.numero_parcela}`, cliente: p.cliente_razao_social || '-', valor: p.valor_parcela, vencimento: p.data_vencimento, status: p.status, source: 'parcela' as const }))
-  ].sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime())
+    ...parcelasPendentes.map((p: any) => ({ id: p.id, contrato_id: p.contrato_id, tipo: 'Parcela', referencia: `${p.numero_contrato} - P${p.numero_parcela}`, cliente: p.cliente_razao_social || '-', valor: p.valor_parcela, vencimento: p.data_vencimento, status: p.status, source: 'parcela' as const }))
+  ].sort((a, b) => { const pa = parseDateFromYYYYMMDD(a.vencimento); const pb = parseDateFromYYYYMMDD(b.vencimento); return (pa?.getTime() || 0) - (pb?.getTime() || 0); })
 
   const despesasPendentes = lancamentos.filter(l => l.tipo === 'despesa' && l.status === 'pendente')
   const despesasPagas = lancamentos.filter(l => l.tipo === 'despesa' && l.status === 'pago')
@@ -143,21 +165,87 @@ export function FinanceiroClient({ ordens, contratos, parcelas }: FinanceiroClie
   const chartMensal = resumo?.chart_mensal || []
   const chartDataFormatted = chartMensal.map((d: any) => {
     const [y, m] = d.mes.split('-')
-    return { mes: `${MESES[parseInt(m) - 1]}/${y.slice(2)}`, receitas: d.receitas || 0, despesas: d.despesas || 0 }
+    return {
+      mes: `${MESES[parseInt(m) - 1]}/${y.slice(2)}`,
+      receitas_pagas: d.receitas_pagas ?? d.receitas ?? 0,
+      receitas_pendentes: d.receitas_pendentes ?? 0,
+      despesas_pagas: d.despesas_pagas ?? d.despesas ?? 0,
+      despesas_pendentes: d.despesas_pendentes ?? 0
+    }
   })
 
-  const despCategoria = resumo?.despesas_por_categoria || []
+const hoje = startOfDay(new Date())
+
+const despesasPagasChart = lancamentos.filter(l => l.tipo === 'despesa' && l.status === 'pago')
+
+const despesasPendentesChart = lancamentos.filter(l =>
+  l.tipo === 'despesa' &&
+  l.status === 'pendente' &&
+  (parseDateFromYYYYMMDD(l.data_lancamento) || new Date(0)) >= hoje
+)
+
+const despesasAtrasadasChart = lancamentos.filter(l =>
+  l.tipo === 'despesa' &&
+  l.status === 'pendente' &&
+  (parseDateFromYYYYMMDD(l.data_lancamento) || new Date(0)) < hoje
+)
+
+const despStatusChart = [
+  { name: 'Pagas', value: despesasPagasChart.reduce((s, l) => s + l.valor, 0), color: '#22c55e' },
+  { name: 'Pendentes', value: despesasPendentesChart.reduce((s, l) => s + l.valor, 0), color: '#facc15' },
+  { name: 'Atrasadas', value: despesasAtrasadasChart.reduce((s, l) => s + l.valor, 0), color: '#ef4444' },
+].filter(d => d.value > 0)
+
 
   // DRE
   const totalReceitaOS = ordens.filter(o => o.liquidado).reduce((s, o) => s + (o.valor_pago || o.valor || 0), 0)
-  const totalReceitaParcelas = parcelas.filter((p: any) => p.status === 'paga').reduce((s: number, p: any) => s + (p.valor_pago || p.valor_parcela), 0)
-  const totalReceitaLanc = lancamentos.filter(l => l.tipo === 'receita' && l.status === 'pago').reduce((s, l) => s + l.valor, 0)
-  const receitaBruta = totalReceitaOS + totalReceitaParcelas + totalReceitaLanc
+
+  // Build set of contrato ids present in the contratos prop
+  const contratoIds = useMemo(() => new Set(contratos.map(c => c.id)), [contratos])
+
+  // Total parcelas pagas (for display) and total parcelas that belong to contratos (excluded from revenue total)
+  const totalReceitaParcelasAll = parcelas
+    .filter((p: any) => p.status === 'paga')
+    .reduce((s: number, p: any) => s + (p.valor_pago || p.valor_parcela), 0)
+
+  const totalReceitaParcelasFromContratos = parcelas
+    .filter((p: any) => p.status === 'paga' && p.contrato_id && contratoIds.has(p.contrato_id))
+    .reduce((s: number, p: any) => s + (p.valor_pago || p.valor_parcela), 0)
+
+  // Total value of contratos (to be recognized in receita/lucro)
+  const totalReceitaContratos = contratos.reduce((s: number, c: any) => s + (c.valor_total || 0), 0)
+
+  // Only count manual lançamentos in DRE to avoid double-counting items coming from OS/parcelas
+  const totalReceitaLanc = lancamentos
+    .filter(l => l.tipo === 'receita' && l.status === 'pago' && (l.referencia_tipo === 'manual' || !l.referencia_tipo))
+    .reduce((s, l) => s + l.valor, 0)
+
+  // Receita bruta uses contratos (accrual) and excludes parcelas that are part of contratos to avoid double-count
+  const receitaBruta = totalReceitaOS + totalReceitaContratos + totalReceitaLanc
   const despesasPorCat = categorias.filter(c => c.tipo === 'despesa').map(c => ({
     ...c,
     total: lancamentos.filter(l => l.categoria_id === c.id && l.status === 'pago').reduce((s, l) => s + l.valor, 0)
   })).filter(c => c.total > 0)
   const totalDespesas = despesasPorCat.reduce((s, c) => s + c.total, 0)
+
+  // Local computed summary (fallback) when API resumo is missing or returns zeros
+  const totalAReceberLocal = osPendentes.reduce((s, o) => s + (o.valor || 0), 0) + parcelasPendentes.reduce((s, p: any) => s + (p.valor_parcela || 0), 0) + lancamentos.filter(l => l.tipo === 'receita' && l.status === 'pendente').reduce((s, l) => s + l.valor, 0)
+  const totalAPagarLocal = lancamentos.filter(l => l.tipo === 'despesa' && l.status === 'pendente').reduce((s, l) => s + l.valor, 0)
+
+  const computedResumo = {
+    receita_total: receitaBruta,
+    despesa_total: totalDespesas,
+    lucro_liquido: receitaBruta - totalDespesas,
+    a_receber: totalAReceberLocal,
+    a_pagar: totalAPagarLocal,
+    os: { os_recebido: totalReceitaOS, os_pendente: totalAReceberLocal },
+    parcelas: { parcelas_recebido: totalReceitaParcelasAll, parcelas_pendente: parcelasPendentes.length },
+    lancamentos: { receitas_pagas: totalReceitaLanc },
+    chart_mensal: resumo?.chart_mensal || [],
+    despesas_por_categoria: despesasPorCat
+  }
+
+  const displayedResumo = (resumo && resumo.receita_total && resumo.receita_total > 0) ? resumo : computedResumo
 
   return (
     <div className="space-y-6">
@@ -173,9 +261,32 @@ export function FinanceiroClient({ ordens, contratos, parcelas }: FinanceiroClie
               <SelectItem value="mes_atual">Mes Atual</SelectItem>
               <SelectItem value="mes_anterior">Mes Anterior</SelectItem>
               <SelectItem value="3_meses">Ultimos 3 Meses</SelectItem>
+              <SelectItem value="mes_especifico">Mês Específico</SelectItem>
               <SelectItem value="todos">Todos</SelectItem>
             </SelectContent>
           </Select>
+
+          {periodo === 'mes_especifico' && (
+            <div className="flex items-center gap-2">
+              <Select value={selectedMonth} onValueChange={(v) => setSelectedMonth(v)}>
+                <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MESES.map((m, i) => <SelectItem key={i} value={String(i + 1).padStart(2, '0')}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedYear} onValueChange={(v) => setSelectedYear(v)}>
+                <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 11 }).map((_, idx) => {
+                    const y = (new Date().getFullYear() - 5) + idx
+                    return <SelectItem key={y} value={String(y)}>{String(y)}</SelectItem>
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <Button onClick={() => setShowNovoLancamento(true)}><Plus className="mr-2 h-4 w-4" />Novo Lancamento</Button>
         </div>
       </div>
@@ -241,8 +352,10 @@ export function FinanceiroClient({ ordens, contratos, parcelas }: FinanceiroClie
                       <YAxis className="text-xs" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
                       <Tooltip formatter={(v: number) => formatCurrency(v)} />
                       <Legend />
-                      <Bar dataKey="receitas" name="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="despesas" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="receitas_pagas" name="Receitas (pagas)" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="receitas_pendentes" name="Receitas (pendentes)" fill="#86efac" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="despesas_pagas" name="Despesas (pagas)" fill="#dc2626" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="despesas_pendentes" name="Despesas (pendentes)" fill="#fca5a5" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -252,35 +365,50 @@ export function FinanceiroClient({ ordens, contratos, parcelas }: FinanceiroClie
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-base">Despesas por Categoria</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="text-base">Status das Despesas</CardTitle>
+              </CardHeader>
               <CardContent>
-                {despCategoria.length > 0 ? (
+                {despStatusChart.length > 0 ? (
                   <div className="flex items-center gap-6">
                     <ResponsiveContainer width="50%" height={240}>
                       <PieChart>
-                        <Pie data={despCategoria} dataKey="total" nameKey="categoria" cx="50%" cy="50%" outerRadius={90} label={false}>
-                          {despCategoria.map((d: any, i: number) => <Cell key={i} fill={d.cor || CHART_COLORS[i % CHART_COLORS.length]} />)}
+                        <Pie
+                          data={despStatusChart}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={90}
+                        >
+                          {despStatusChart.map((d, i) => (
+                            <Cell key={i} fill={d.color} />
+                          ))}
                         </Pie>
                         <Tooltip formatter={(v: number) => formatCurrency(v)} />
                       </PieChart>
                     </ResponsiveContainer>
+
                     <div className="space-y-2 flex-1">
-                      {despCategoria.map((d: any, i: number) => (
+                      {despStatusChart.map((d, i) => (
                         <div key={i} className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2">
-                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: d.cor || CHART_COLORS[i % CHART_COLORS.length] }} />
-                            <span>{d.categoria}</span>
+                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: d.color }} />
+                            <span>{d.name}</span>
                           </div>
-                          <span className="font-medium">{formatCurrency(d.total)}</span>
+                          <span className="font-medium">{formatCurrency(d.value)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-[240px] text-muted-foreground">Sem despesas registradas</div>
+                  <div className="flex items-center justify-center h-[240px] text-muted-foreground">
+                    Sem despesas registradas
+                  </div>
                 )}
               </CardContent>
             </Card>
+
           </div>
         </TabsContent>
 
@@ -319,29 +447,44 @@ export function FinanceiroClient({ ordens, contratos, parcelas }: FinanceiroClie
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {contasReceber.map((item) => {
-                        const vencida = new Date(item.vencimento) < new Date() && item.status !== 'paga'
-                        return (
-                          <TableRow key={`${item.source}-${item.id}`} className={vencida ? 'bg-red-50/50' : ''}>
-                            <TableCell><Badge variant="outline">{item.tipo}</Badge></TableCell>
-                            <TableCell className="font-mono text-sm">{item.referencia}</TableCell>
-                            <TableCell>{item.cliente}</TableCell>
-                            <TableCell className="font-medium">{formatCurrency(item.valor)}</TableCell>
-                            <TableCell className={vencida ? 'text-red-600 font-medium' : ''}>{formatDate(item.vencimento)}</TableCell>
-                            <TableCell>
-                              {vencida ? <Badge variant="destructive">Vencida</Badge> : <Badge className="bg-amber-100 text-amber-800">Pendente</Badge>}
-                            </TableCell>
-                            <TableCell>
-                              {item.source === 'os' ? (
-                                <Link href="/dashboard/ordens"><Button variant="ghost" size="sm">Ver OS</Button></Link>
-                              ) : (
-                                <Link href={`/dashboard/contratos`}><Button variant="ghost" size="sm">Ver Contrato</Button></Link>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
+                      {contasReceber.map((item) => (
+                        <TableRow key={`${item.source}-${item.id}`}>
+                          <TableCell>
+                            <Badge variant="outline">{item.tipo}</Badge>
+                          </TableCell>
+
+                          <TableCell className="font-mono text-sm">{item.referencia}</TableCell>
+                          <TableCell>{item.cliente}</TableCell>
+                          <TableCell className="font-medium">{formatCurrency(item.valor)}</TableCell>
+                          <TableCell>{formatDate(item.vencimento)}</TableCell>
+
+                          <TableCell>
+                            {item.status === 'paga' && (
+                              <Badge className="bg-emerald-100 text-emerald-800">Pago</Badge>
+                            )}
+                            {item.status === 'pendente' && (
+                              <Badge className="bg-amber-100 text-amber-800">Pendente</Badge>
+                            )}
+                            {item.status === 'cancelada' && (
+                              <Badge variant="destructive">Cancelada</Badge>
+                            )}
+                          </TableCell>
+
+                          <TableCell>
+                            {item.source === 'os' ? (
+                              <Link href="/dashboard/ordens">
+                                <Button variant="ghost" size="sm">Ver OS</Button>
+                              </Link>
+                            ) : (
+                              <Link href={`/dashboard/contratos/${item.contrato_id}`}>
+                                <Button variant="ghost" size="sm">Ver Contrato</Button>
+                              </Link>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
+
                   </Table>
                 </div>
               ) : (
@@ -514,7 +657,7 @@ export function FinanceiroClient({ ordens, contratos, parcelas }: FinanceiroClie
                     </div>
                     <div className="flex justify-between py-2 px-3 rounded bg-emerald-50/50">
                       <span>Parcelas de Contratos (pagas)</span>
-                      <span className="font-medium text-emerald-700">{formatCurrency(totalReceitaParcelas)}</span>
+                      <span className="font-medium text-emerald-700">{formatCurrency(totalReceitaParcelasAll)}</span>
                     </div>
                     {totalReceitaLanc > 0 && (
                       <div className="flex justify-between py-2 px-3 rounded bg-emerald-50/50">

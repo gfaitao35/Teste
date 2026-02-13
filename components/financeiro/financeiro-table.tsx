@@ -50,6 +50,7 @@ import { MoreHorizontal, XCircle, FileDown, DollarSign } from 'lucide-react'
 import { toast } from 'sonner'
 import { generateOrderPDF } from '@/lib/pdf-os'
 import type { OrdemServico } from '@/lib/types'
+import { toLocalDateInput, formatDateBRFromYYYYMMDD } from '@/lib/utils'
 
 interface FinanceiroTableProps {
   ordens: OrdemServico[]
@@ -58,7 +59,7 @@ interface FinanceiroTableProps {
 export function FinanceiroTable({ ordens }: FinanceiroTableProps) {
   const [filter, setFilter] = useState<string>('all')
   const [liquidandoOrdem, setLiquidandoOrdem] = useState<OrdemServico | null>(null)
-  const [dataLiquidacao, setDataLiquidacao] = useState(() => new Date().toISOString().split('T')[0])
+  const [dataLiquidacao, setDataLiquidacao] = useState(() => toLocalDateInput())
   const [valorPago, setValorPago] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [desfazendoOrdem, setDesfazendoOrdem] = useState<OrdemServico | null>(null)
@@ -75,14 +76,11 @@ export function FinanceiroTable({ ordens }: FinanceiroTableProps) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
   }
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-'
-    return new Date(dateStr).toLocaleDateString('pt-BR')
-  }
+  const formatDate = (dateStr: string | null) => formatDateBRFromYYYYMMDD(dateStr)
 
   const handleOpenLiquidar = (ordem: OrdemServico) => {
     setLiquidandoOrdem(ordem)
-    setDataLiquidacao(new Date().toISOString().split('T')[0])
+    setDataLiquidacao(toLocalDateInput())
     setValorPago(ordem.valor != null ? String(ordem.valor) : '')
   }
 

@@ -19,9 +19,20 @@ export async function GET(request: NextRequest) {
     const database = getDb()
 
     let query = `
-      SELECT l.*, c.nome as categoria_nome, c.cor as categoria_cor
+      SELECT 
+        l.*,
+        c.nome as categoria_nome,
+        c.cor as categoria_cor,
+        ct.numero_contrato,
+        ct.data_inicio,
+        ct.data_fim,
+        cl.razao_social,
+        cl.nome_fantasia,
+        cl.cnpj
       FROM lancamentos_financeiros l
       LEFT JOIN categorias_financeiras c ON l.categoria_id = c.id
+      LEFT JOIN contratos ct ON l.referencia_tipo = 'contrato' AND l.referencia_id = ct.id
+      LEFT JOIN clientes cl ON ct.cliente_id = cl.id
       WHERE l.user_id = ?
     `
     const params: any[] = [userId]

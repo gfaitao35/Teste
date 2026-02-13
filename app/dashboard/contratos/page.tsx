@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { PlusCircle, FileText, Calendar, DollarSign } from 'lucide-react'
 import Link from 'next/link'
+import { formatDateBRFromYYYYMMDD } from '@/lib/utils'
 
 export default async function ContratosPage() {
   const userId = await getSessionUserId()
@@ -130,7 +131,7 @@ export default async function ContratosPage() {
                         {statusBadge.label}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(contrato.data_inicio as string).toLocaleDateString('pt-BR')} até {new Date(contrato.data_fim as string).toLocaleDateString('pt-BR')}
+                        {formatDateBRFromYYYYMMDD(contrato.data_inicio)} até {formatDateBRFromYYYYMMDD(contrato.data_fim)}
                       </span>
                       <Link href={`/dashboard/contratos/${contrato.id}`}>
                         <Button variant="outline" size="sm">

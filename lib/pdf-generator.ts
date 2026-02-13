@@ -1,4 +1,5 @@
 import type { Certificado } from './types'
+import { formatDateBRFromYYYYMMDD } from './utils'
 
 interface TemplateStyle {
   nome_empresa: string
@@ -32,9 +33,9 @@ const defaultStyle: TemplateStyle = {
   cargo_assinatura: 'Controlador de Pragas',
 }
 
-async function fetchTemplate(): Promise<TemplateStyle> {
+async function fetchTemplate(tipo: 'os' | 'certificado'): Promise<TemplateStyle> {
   try {
-    const res = await fetch('/api/templates?tipo=certificado')
+    const res = await fetch(`/api/templates?tipo=${tipo}`)
     if (res.ok) {
       const t = await res.json()
       if (t) {
@@ -60,7 +61,7 @@ async function fetchTemplate(): Promise<TemplateStyle> {
 }
 
 export async function generateCertificatePDF(certificado: Certificado) {
-  const s = await fetchTemplate()
+  const s = await fetchTemplate('os')
 
   const ordem = certificado.ordem_servico as {
     numero_os: string; tipo_servico: string; data_execucao: string
@@ -69,7 +70,7 @@ export async function generateCertificatePDF(certificado: Certificado) {
   } | undefined
 
   const cliente = ordem?.cliente
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+const formatDate = (dateString: string) => formatDateBRFromYYYYMMDD(dateString, { day: '2-digit', month: 'long', year: 'numeric' })
   const formatCNPJ = (cnpj: string) => { if (!cnpj) return '-'; return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') }
 
   const borderCss = s.mostrar_borda ? `border: ${s.estilo_borda === 'double' ? '3px' : '2px'} ${s.estilo_borda} ${s.cor_primaria};` : ''

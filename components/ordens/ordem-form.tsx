@@ -18,6 +18,7 @@ import {
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { OrdemServico, Cliente, StatusOrdemServico } from '@/lib/types'
+import { toLocalDateInput } from '@/lib/utils'
 
 interface OrdemFormProps {
   ordem?: OrdemServico
@@ -39,7 +40,7 @@ export function OrdemForm({ ordem, clientes, onSuccess }: OrdemFormProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     cliente_id: ordem?.cliente_id || '',
-    data_execucao: ordem?.data_execucao || new Date().toISOString().split('T')[0],
+    data_execucao: ordem?.data_execucao || toLocalDateInput(),
     tipo_servico: ordem?.tipo_servico || '',
     descricao_servico: ordem?.descricao_servico || '',
     local_execucao: ordem?.local_execucao || '',

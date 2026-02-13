@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Calendar, DollarSign, FileText, CheckCircle, Clock, XCircle, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { BaixaParcelaDialog } from '@/components/financeiro/baixa-parcela-dialog'
+import { formatDateBRFromYYYYMMDD } from '@/lib/utils'
 
 interface Contrato {
   id: string
@@ -46,6 +47,7 @@ export default function ContratoDetalhesClientPage() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
+    if (!params?.id) return
     fetchContrato()
   }, [params.id, refreshKey])
 
@@ -53,6 +55,7 @@ export default function ContratoDetalhesClientPage() {
     try {
       setLoading(true)
       const response = await fetch(`/api/contratos/${params.id}`)
+      console.log(response)
       if (response.ok) {
         const data = await response.json()
         setContrato(data.contrato)
@@ -160,7 +163,7 @@ export default function ContratoDetalhesClientPage() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Período do Contrato</p>
                 <p className="text-lg font-semibold">
-                  {new Date(contrato.data_inicio).toLocaleDateString('pt-BR')} até {new Date(contrato.data_fim).toLocaleDateString('pt-BR')}
+                  {formatDateBRFromYYYYMMDD(contrato.data_inicio)} até {formatDateBRFromYYYYMMDD(contrato.data_fim)}
                 </p>
               </div>
               <div>
@@ -255,11 +258,11 @@ export default function ContratoDetalhesClientPage() {
                     <div className="space-y-1">
                       <p className="font-medium">Parcela {parcela.numero_parcela}/{contrato.numero_parcelas}</p>
                       <p className="text-sm text-muted-foreground">
-                        Vencimento: {new Date(parcela.data_vencimento).toLocaleDateString('pt-BR')}
+                        Vencimento: {formatDateBRFromYYYYMMDD(parcela.data_vencimento)}
                       </p>
                       {parcela.data_pagamento && (
                         <p className="text-sm text-muted-foreground">
-                          Pagamento: {new Date(parcela.data_pagamento).toLocaleDateString('pt-BR')}
+                          Pagamento: {formatDateBRFromYYYYMMDD(parcela.data_pagamento)}
                         </p>
                       )}
                       {parcela.forma_pagamento && (

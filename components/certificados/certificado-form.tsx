@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { OrdemServico } from '@/lib/types'
+import { toLocalDateInput, formatDateBRFromYYYYMMDD } from '@/lib/utils'
 
 interface CertificadoFormProps {
   ordem: OrdemServico
@@ -46,7 +47,7 @@ export function CertificadoForm({ ordem }: CertificadoFormProps) {
 
   const [formData, setFormData] = useState({
     tipo_certificado: '',
-    data_emissao: new Date().toISOString().split('T')[0],
+    data_emissao: toLocalDateInput(),
     validade_meses: '6',
     observacoes: '',
   })
@@ -68,7 +69,7 @@ export function CertificadoForm({ ordem }: CertificadoFormProps) {
   const calculateDataValidade = (dataEmissao: string, meses: string) => {
     const date = new Date(dataEmissao)
     date.setMonth(date.getMonth() + parseInt(meses))
-    return date.toISOString().split('T')[0]
+    return toLocalDateInput(date)
   }
 
   const formatCNPJ = (cnpj: string) => {
@@ -119,7 +120,7 @@ export function CertificadoForm({ ordem }: CertificadoFormProps) {
           <div>
             <p className="text-sm text-muted-foreground">Data de Execução</p>
             <p className="font-medium">
-              {new Date(ordem.data_execucao).toLocaleDateString('pt-BR')}
+              {formatDateBRFromYYYYMMDD(ordem.data_execucao)}
             </p>
           </div>
           <div>
@@ -211,7 +212,7 @@ export function CertificadoForm({ ordem }: CertificadoFormProps) {
         <div className="space-y-2">
           <Label>Data de Validade</Label>
           <Input
-            value={new Date(calculateDataValidade(formData.data_emissao, formData.validade_meses)).toLocaleDateString('pt-BR')}
+            value={formatDateBRFromYYYYMMDD(calculateDataValidade(formData.data_emissao, formData.validade_meses))}
             disabled
             className="bg-muted"
           />
