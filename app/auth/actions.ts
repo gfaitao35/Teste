@@ -26,7 +26,7 @@ export async function loginAction(formData: FormData) {
     return { error: 'Email ou senha incorretos. Tente novamente.' }
   }
 
-  const ok = await verifyPassword(password, user.password_hash)
+  const ok = await verifyPassword(password, user.senha)
   if (!ok) {
     return { error: 'Email ou senha incorretos. Tente novamente.' }
   }
@@ -50,7 +50,16 @@ export async function signUpAction(formData: FormData) {
   const password = formData.get('password') as string
   const confirmPassword = (formData.get('confirm_password') ?? formData.get('confirmPassword')) as string
   const role = ((formData.get('role') as string) || 'operador') as 'admin' | 'operador'
-
+  const cnpj = (formData.get('cnpj') as string)?.trim()
+  const nomeFantasia = (formData.get('nomeFantasia') as string)?.trim()
+  const razaoSocial = (formData.get('razaoSocial') as string)?.trim()
+  const logradouro = (formData.get('logradouro') as string)?.trim()
+  const numero = (formData.get('numero') as string)?.trim()
+  const bairro = (formData.get('bairro') as string)?.trim()
+  const cidade = (formData.get('cidade') as string)?.trim()
+  const estado = (formData.get('estado') as string)?.trim()
+  const pais = (formData.get('pais') as string)?.trim()
+  
   if (!nomeCompleto || !email || !password) {
     return { error: 'Preencha todos os campos obrigatórios.' }
   }
@@ -67,8 +76,23 @@ export async function signUpAction(formData: FormData) {
     return { error: 'Este email já está cadastrado.' }
   }
 
-  const password_hash = await hashPassword(password)
-  createUser({ email, password_hash, nome_completo: nomeCompleto, role })
+    const password_hash = await hashPassword(password)
+    createUser({
+      email,
+      senha: password_hash,
+      nome_completo: nomeCompleto,
+      role,
+      cnpj,
+      nome_fantasia: nomeFantasia,
+      razao_social: razaoSocial,
+      logradouro,
+      numero,
+      bairro,
+      cidade,
+      estado,
+      pais,
+    })
+
 
   return { success: true }
 }

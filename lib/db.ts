@@ -23,17 +23,25 @@ function initSchema(database: Database.Database) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
       nome_completo TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'operador' CHECK (role IN ('admin', 'operador')),
+      email TEXT UNIQUE NOT NULL,
+      senha TEXT NOT NULL,
+      role TEXT NOT NULL,
+      cnpj TEXT,
+      nome_fantasia TEXT,
+      razao_social TEXT,
+      logradouro TEXT,
+      numero TEXT,
+      bairro TEXT,
+      cidade TEXT,
+      estado TEXT,
+      pais TEXT,
       created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS clientes (
       id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
       razao_social TEXT NOT NULL,
       nome_fantasia TEXT,
       cnpj TEXT NOT NULL,
@@ -49,12 +57,13 @@ function initSchema(database: Database.Database) {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
+    
     CREATE INDEX IF NOT EXISTS idx_clientes_user_id ON clientes(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_cnpj ON clientes(cnpj);
 
     CREATE TABLE IF NOT EXISTS ordens_servico (
       id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
       cliente_id TEXT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
       numero_os TEXT NOT NULL,
       data_execucao TEXT NOT NULL,
@@ -78,12 +87,13 @@ function initSchema(database: Database.Database) {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
+
     CREATE INDEX IF NOT EXISTS idx_os_user_id ON ordens_servico(user_id);
     CREATE INDEX IF NOT EXISTS idx_os_cliente_id ON ordens_servico(cliente_id);
 
     CREATE TABLE IF NOT EXISTS certificados (
       id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
       ordem_servico_id TEXT NOT NULL REFERENCES ordens_servico(id) ON DELETE CASCADE,
       numero_certificado TEXT NOT NULL,
       data_emissao TEXT NOT NULL,
@@ -92,12 +102,13 @@ function initSchema(database: Database.Database) {
       observacoes TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
     CREATE INDEX IF NOT EXISTS idx_cert_user_id ON certificados(user_id);
     CREATE INDEX IF NOT EXISTS idx_cert_os_id ON certificados(ordem_servico_id);
 
     CREATE TABLE IF NOT EXISTS contratos (
       id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
       cliente_id TEXT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
       numero_contrato TEXT NOT NULL UNIQUE,
       data_inicio TEXT NOT NULL,
@@ -111,6 +122,7 @@ function initSchema(database: Database.Database) {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
+
     CREATE INDEX IF NOT EXISTS idx_contratos_user_id ON contratos(user_id);
     CREATE INDEX IF NOT EXISTS idx_contratos_cliente_id ON contratos(cliente_id);
 
@@ -127,12 +139,10 @@ function initSchema(database: Database.Database) {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
+    
     CREATE INDEX IF NOT EXISTS idx_parcelas_contrato_id ON parcelas(contrato_id);
     CREATE INDEX IF NOT EXISTS idx_parcelas_status ON parcelas(status);
   `)
-  migrateOrdensServicoFinanceiro(database)
-  migrateDocumentTemplates(database)
-  migrateLancamentosFinanceiros(database)
 }
 
 function migrateDocumentTemplates(database: Database.Database) {

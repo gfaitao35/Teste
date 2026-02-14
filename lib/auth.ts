@@ -93,17 +93,57 @@ export function generateId(): string {
   return randomBytes(16).toString('hex')
 }
 
-export function getUserByEmail(email: string): { id: string; email: string; password_hash: string; nome_completo: string; role: string } | null {
+export function getUserByEmail(email: string): 
+  { id: string; email: string; senha: string; nome_completo: string; role: string } | null 
+{
   const database = getDb()
-  const row = database.prepare('SELECT id, email, password_hash, nome_completo, role FROM users WHERE email = ?').get(email) as { id: string; email: string; password_hash: string; nome_completo: string; role: string } | undefined
+  const row = database
+    .prepare('SELECT id, email, senha, nome_completo, role FROM users WHERE email = ?')
+    .get(email) as { id: string; email: string; senha: string; nome_completo: string; role: string } | undefined
   return row ?? null
 }
 
-export function createUser(data: { email: string; password_hash: string; nome_completo: string; role: string }): string {
+export function createUser(data: {
+  email: string
+  senha: string
+  nome_completo: string
+  role: string
+  cnpj?: string
+  nome_fantasia?: string
+  razao_social?: string
+  logradouro?: string
+  numero?: string
+  bairro?: string
+  cidade?: string
+  estado?: string
+  pais?: string
+}): string {
   const database = getDb()
   const id = generateId()
-  database.prepare(
-    'INSERT INTO users (id, email, password_hash, nome_completo, role) VALUES (?, ?, ?, ?, ?)'
-  ).run(id, data.email, data.password_hash, data.nome_completo, data.role)
+  database.prepare(`
+    INSERT INTO users (
+      id, email, senha, nome_completo, role,
+      cnpj, nome_fantasia, razao_social,
+      logradouro, numero, bairro, cidade, estado, pais
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    data.email,
+    data.senha,
+    data.nome_completo,
+    data.role,
+    data.cnpj ?? null,
+    data.nome_fantasia ?? null,
+    data.razao_social ?? null,
+    data.logradouro ?? null,
+    data.numero ?? null,
+    data.bairro ?? null,
+    data.cidade ?? null,
+    data.estado ?? null,
+    data.pais ?? null
+  )
   return id
 }
+
+
+
