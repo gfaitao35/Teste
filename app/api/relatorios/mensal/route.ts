@@ -135,9 +135,9 @@ export async function GET(request: NextRequest) {
 
     const lancResumo = database.prepare(`
       SELECT 
-        COALESCE(SUM(CASE WHEN tipo='receita' AND status='pago' THEN valor ELSE 0 END), 0) as receitas_avulsas,
+        COALESCE(SUM(CASE WHEN tipo='receita' AND status='pago' AND referencia_tipo='manual' THEN valor ELSE 0 END), 0) as receitas_avulsas,
         COALESCE(SUM(CASE WHEN tipo='despesa' AND status='pago' THEN valor ELSE 0 END), 0) as despesas_pagas,
-        COALESCE(SUM(CASE WHEN tipo='receita' AND status='pendente' THEN valor ELSE 0 END), 0) as receitas_pendentes,
+        COALESCE(SUM(CASE WHEN tipo='receita' AND status='pendente' AND referencia_tipo='manual' THEN valor ELSE 0 END), 0) as receitas_pendentes,
         COALESCE(SUM(CASE WHEN tipo='despesa' AND status='pendente' THEN valor ELSE 0 END), 0) as despesas_pendentes
       FROM lancamentos_financeiros
       WHERE user_id = ? AND strftime('%Y-%m', data_lancamento) = ?
