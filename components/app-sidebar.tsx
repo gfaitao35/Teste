@@ -52,6 +52,11 @@ const menuItems = [
     icon: Users,
   },
   {
+    title: 'Orçamentos',
+    url: '/dashboard/orcamentos',
+    icon: DollarSign, 
+  },
+  {
     title: 'Ordens de Serviço',
     url: '/dashboard/ordens',
     icon: ClipboardList,
